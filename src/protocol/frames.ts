@@ -1,3 +1,4 @@
+import type { WorkflowSummary } from '../agents/workflows.js'
 import type { RunEvent } from '../loop/runner.js'
 import type { Decision, Message } from '../types.js'
 
@@ -103,6 +104,8 @@ export type ClientFrame =
   | { type: 'push.subscribe'; subscription: { endpoint: string; keys: { p256dh: string; auth: string }; expirationTime?: number | null } }
   | { type: 'push.unsubscribe'; endpoint: string }
   | { type: 'push.test' }
+  | { type: 'workflow.list' }
+  | { type: 'workflow.run'; name: string; inputs: Record<string, string>; workspace: string }
 
 export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
@@ -134,6 +137,10 @@ export type ServerFrame =
   | { type: 'mcp.resource.read'; server: string; uri: string; text: string }
   | { type: 'mcp.prompts'; server: string; prompts: { name: string; description?: string; arguments?: { name: string; required?: boolean }[] }[] }
   | { type: 'mcp.prompt.get'; server: string; name: string; text: string }
+  | { type: 'workflow.list'; workflows: WorkflowSummary[] }
+  | { type: 'workflow.started'; name: string; session_id: string; run_id: string; max_cost_usd: number | null }
+  | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry'; ms?: number; cost_usd?: number; detail?: string }
+  | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded'; cost_usd: number; outputs: Record<string, unknown>; error?: string }
   | { type: 'push.vapid'; public_key: string; subscriptions: number }
   | { type: 'push.subscribed'; endpoint: string }
   | { type: 'trigger.list'; triggers: TriggerStatus[] }

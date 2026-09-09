@@ -94,6 +94,24 @@ export {
   type PluginBundle,
   type ProfileOverride,
 } from './agents/plugins.js'
+export {
+  WorkflowSchema,
+  WorkflowStepSchema,
+  evaluateCondition,
+  isToolStep,
+  loadWorkflows,
+  maxWorkflowCost,
+  parseExitCode,
+  renderArgs,
+  renderTemplate,
+  summarizeWorkflow,
+  type AgentStep,
+  type StepResult,
+  type ToolStep,
+  type Workflow,
+  type WorkflowStep,
+  type WorkflowSummary,
+} from './agents/workflows.js'
 export * from './protocol/frames.js'
 export * from './protocol/relay.js'
 export { NodeDaemonClient, type NodeClientOptions } from './protocol/node-client.js'

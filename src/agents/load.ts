@@ -5,6 +5,7 @@ import { HooksFileSchema, type HookConfig } from '../hooks/runner.js'
 import type { Policy } from '../types.js'
 import { OverridesFileSchema, PluginsFileSchema, loadPlugins, type PluginBundle } from './plugins.js'
 import { RoutingFileSchema, RuleWhenSchema, emptyRouting, normalizeRouting, type Routing, type RuleWhen } from './routing.js'
+import { loadWorkflows, type Workflow } from './workflows.js'
 import {
   BudgetsFileSchema,
   McpFileSchema,
@@ -47,6 +48,7 @@ export interface AgentsRepo {
   webhooks: WebhookConfig[]
   hooks: HookConfig[]
   plugins: PluginBundle[]
+  workflows: Map<string, Workflow>
   errors: LoadError[]
 }
 
@@ -142,7 +144,22 @@ export function loadAgentsRepo(root: string): AgentsRepo {
     for (const [k, v] of Object.entries(plugin.mcp)) mcp.servers[k] = v
     hooks.push(...plugin.hooks)
   }
-  return { profiles: loaded.profiles, policies, skills: skillsLoaded.skills, budgets, mcp, secrets, routing, webhooks, hooks, plugins, errors }
+  const workflowsLoaded = loadWorkflows(join(root, 'workflows'))
+  errors.push(...workflowsLoaded.errors)
+  return {
+    profiles: loaded.profiles,
+    policies,
+    skills: skillsLoaded.skills,
+    budgets,
+    mcp,
+    secrets,
+    routing,
+    webhooks,
+    hooks,
+    plugins,
+    workflows: workflowsLoaded.workflows,
+    errors,
+  }
 }
 
 function safeParse<T>(file: string, schema: { parse(v: unknown): T }, fallback: T, errors: LoadError[]): T {
