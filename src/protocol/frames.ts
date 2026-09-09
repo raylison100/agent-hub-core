@@ -99,6 +99,10 @@ export type ClientFrame =
   | { type: 'mcp.resource.read'; server: string; uri: string }
   | { type: 'mcp.prompts'; server: string }
   | { type: 'mcp.prompt.get'; server: string; name: string; args?: Record<string, string> }
+  | { type: 'push.vapid' }
+  | { type: 'push.subscribe'; subscription: { endpoint: string; keys: { p256dh: string; auth: string }; expirationTime?: number | null } }
+  | { type: 'push.unsubscribe'; endpoint: string }
+  | { type: 'push.test' }
 
 export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
@@ -130,6 +134,8 @@ export type ServerFrame =
   | { type: 'mcp.resource.read'; server: string; uri: string; text: string }
   | { type: 'mcp.prompts'; server: string; prompts: { name: string; description?: string; arguments?: { name: string; required?: boolean }[] }[] }
   | { type: 'mcp.prompt.get'; server: string; name: string; text: string }
+  | { type: 'push.vapid'; public_key: string; subscriptions: number }
+  | { type: 'push.subscribed'; endpoint: string }
   | { type: 'trigger.list'; triggers: TriggerStatus[] }
   | { type: 'trigger.saved'; trigger: TriggerStatus }
   | { type: 'trigger.deleted'; id: string }
