@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./e2e": {
+      "types": "./dist/protocol/e2e.d.ts",
+      "import": "./dist/protocol/e2e.js"
     }
   },
   "files": [
