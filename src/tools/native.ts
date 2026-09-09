@@ -164,8 +164,33 @@ const runCommand: RegisteredTool = {
   },
   async handler(args, ctx) {
     const cwd = resolveInside(ctx.workspace, str(args.cwd) ?? '.')
-    return runShell(str(args.command)!, cwd, num(args.timeout_ms) ?? defaultTimeoutMs, ctx)
+    const timeout = num(args.timeout_ms) ?? defaultTimeoutMs
+    if (ctx.sandbox) return runShell(sandboxCommand(ctx.sandbox, ctx.workspace, cwd, str(args.command)!, timeout), ctx.workspace, timeout + 5000, ctx)
+    return runShell(str(args.command)!, cwd, timeout, ctx)
   },
+}
+
+/** Monta o `docker run` que executa o comando dentro do container com o workspace montado. */
+export function sandboxCommand(sandbox: { image: string; network: boolean; memory?: string; cpus?: number }, workspace: string, cwd: string, command: string, timeoutMs: number): string {
+  const rel = relative(workspace, cwd).replace(/\\/g, '/')
+  const workdir = rel ? `/workspace/${rel}` : '/workspace'
+  const parts = [
+    'docker run --rm -i',
+    sandbox.network ? '' : '--network none',
+    sandbox.memory ? `--memory ${shellQuote(sandbox.memory)}` : '',
+    sandbox.cpus ? `--cpus ${sandbox.cpus}` : '',
+    `--stop-timeout ${Math.ceil(timeoutMs / 1000)}`,
+    `-v ${shellQuote(workspace)}:/workspace`,
+    `-w ${shellQuote(workdir)}`,
+    shellQuote(sandbox.image),
+    'sh -lc',
+    shellQuote(command),
+  ]
+  return parts.filter(Boolean).join(' ')
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
 }
 
 const git: RegisteredTool = {

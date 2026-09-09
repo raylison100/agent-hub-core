@@ -1,4 +1,5 @@
 import WebSocket from 'ws'
+import { deriveE2eKey, isSealed, open, seal } from './e2e.js'
 import type { ClientFrame, ServerFrame } from './frames.js'
 import type { ClientToRelay, RelayToClient } from './relay.js'
 
@@ -14,7 +15,7 @@ export interface NodeClientOptions {
 const protocolVersion = 1
 const backoffMs = [2000, 5000, 10000, 30000]
 
-/** Cliente Node do protocolo do daemon, direto ou pelo relay, com reconexao. Base para canais e para o servidor MCP. */
+/** Cliente Node do protocolo do daemon, direto ou pelo relay com cifra ponta a ponta, com reconexao. */
 export class NodeDaemonClient {
   private socket: WebSocket | null = null
   private listeners = new Set<(f: ServerFrame) => void>()
@@ -22,6 +23,8 @@ export class NodeDaemonClient {
   private readyWaiters: { resolve: () => void; reject: (e: Error) => void }[] = []
   private attempts = 0
   private stopped = false
+  private key: CryptoKey | null = null
+  private attached = false
   online = false
 
   constructor(private readonly opts: NodeClientOptions) {}
@@ -33,7 +36,7 @@ export class NodeDaemonClient {
 
   start(): void {
     this.stopped = false
-    this.connect()
+    void this.connect()
   }
 
   stop(): void {
@@ -64,7 +67,7 @@ export class NodeDaemonClient {
 
   send(frame: ClientFrame): void {
     if (!this.online || !this.socket) throw new Error('daemon desconectado')
-    this.raw(frame)
+    void this.raw(frame)
   }
 
   request<T extends ServerFrame['type']>(frame: ClientFrame, type: T, timeoutMs = 15000): Promise<Extract<ServerFrame, { type: T }>> {
@@ -99,16 +102,18 @@ export class NodeDaemonClient {
     this.opts.log?.(message)
   }
 
-  private connect(): void {
+  private async connect(): Promise<void> {
+    if (this.opts.accountToken && !this.key) this.key = await deriveE2eKey(this.opts.accountToken)
     const url = new URL(this.opts.url)
     if (this.opts.accountToken && !url.pathname.endsWith('/client')) url.pathname = url.pathname.replace(/\/$/, '') + '/client'
     const socket = new WebSocket(url)
     this.socket = socket
+    this.attached = false
     socket.on('open', () => {
-      if (this.opts.accountToken) this.raw({ type: 'relay.auth', account_token: this.opts.accountToken, client: this.opts.client })
-      else this.raw({ type: 'auth', token: this.opts.token, protocol_version: protocolVersion, client: this.opts.client })
+      if (this.opts.accountToken) this.plain({ type: 'relay.auth', account_token: this.opts.accountToken, client: this.opts.client })
+      else this.plain({ type: 'auth', token: this.opts.token, protocol_version: protocolVersion, client: this.opts.client })
     })
-    socket.on('message', (raw) => this.receive(JSON.parse(String(raw)) as RelayToClient))
+    socket.on('message', (raw) => void this.receive(JSON.parse(String(raw)) as RelayToClient))
     socket.on('error', (err) => this.log(`conexao: ${err.message}`))
     socket.on('close', () => {
       this.online = false
@@ -119,20 +124,22 @@ export class NodeDaemonClient {
       }
       const delay = backoffMs[Math.min(this.attempts, backoffMs.length - 1)]!
       this.attempts += 1
-      setTimeout(() => this.connect(), delay)
+      setTimeout(() => void this.connect(), delay)
     })
   }
 
-  private receive(frame: RelayToClient): void {
+  private async receive(incoming: RelayToClient): Promise<void> {
+    const frame = isSealed(incoming) && this.key ? await open<ServerFrame>(this.key, incoming) : (incoming as Exclude<RelayToClient, { e: 1 }>)
     switch (frame.type) {
       case 'relay.devices': {
         const wanted = this.opts.deviceId ?? frame.devices[0]?.id
-        if (wanted) this.raw({ type: 'relay.attach', device_id: wanted })
+        if (wanted) this.plain({ type: 'relay.attach', device_id: wanted })
         else this.log('relay sem dispositivos online')
         return
       }
       case 'relay.attached':
-        this.raw({ type: 'auth', token: this.opts.token, protocol_version: protocolVersion, client: this.opts.client })
+        this.attached = true
+        await this.raw({ type: 'auth', token: this.opts.token, protocol_version: protocolVersion, client: this.opts.client })
         return
       case 'relay.detached':
         this.log(`relay: ${frame.reason}`)
@@ -170,7 +177,12 @@ export class NodeDaemonClient {
     for (const l of this.listeners) l(frame)
   }
 
-  private raw(frame: ClientToRelay): void {
+  private async raw(frame: ClientFrame): Promise<void> {
+    if (this.key && this.attached) this.plain(await seal(this.key, frame))
+    else this.plain(frame)
+  }
+
+  private plain(frame: ClientToRelay): void {
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(frame))
   }
 }

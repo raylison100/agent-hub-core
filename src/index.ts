@@ -20,6 +20,7 @@ export {
   type WebhookConfig,
   type AgentProfile,
   type ProfilePhase,
+  type SandboxConfig,
   type BudgetsFile,
   type McpFile,
   type McpServerConfig,
@@ -34,8 +35,8 @@ export {
   type LoadError,
   type Skill,
 } from './agents/load.js'
-export { ToolRegistry, type RegisteredTool, type ToolContext, type ToolHandler } from './tools/registry.js'
-export { nativeTools } from './tools/native.js'
+export { ToolRegistry, type RegisteredTool, type SandboxOptions, type ToolContext, type ToolHandler } from './tools/registry.js'
+export { nativeTools, sandboxCommand } from './tools/native.js'
 export { McpBridge, type McpPromptInfo, type McpResourceInfo } from './tools/mcp.js'
 export { validateCall, type ValidationResult } from './tools/validate.js'
 export { decide, defaultPolicy, isDestructive, riskFor } from './tools/policy.js'
@@ -114,4 +115,5 @@ export {
 } from './agents/workflows.js'
 export * from './protocol/frames.js'
 export * from './protocol/relay.js'
+export { deriveE2eKey, isSealed, open as openFrame, seal as sealFrame, type SealedFrame } from './protocol/e2e.js'
 export { NodeDaemonClient, type NodeClientOptions } from './protocol/node-client.js'

@@ -1,3 +1,4 @@
+import type { SealedFrame } from './e2e.js'
 import type { ClientFrame, ServerFrame } from './frames.js'
 
 export interface RelayDevice {
@@ -9,14 +10,14 @@ export interface RelayDevice {
 /** Quadros do relay para o daemon, multiplexados por canal. */
 export type RelayToDaemon =
   | { t: 'open'; ch: string; client: string }
-  | { t: 'frame'; ch: string; frame: ClientFrame }
+  | { t: 'frame'; ch: string; frame: ClientFrame | SealedFrame }
   | { t: 'close'; ch: string }
   | { t: 'trigger'; id: string; trigger_id: string; headers: Record<string, string>; body: string }
   | { t: 'ping' }
 
-/** Quadros do daemon para o relay. */
+/** Quadros do daemon para o relay. Pelo relay, os quadros do protocolo viajam cifrados de ponta a ponta. */
 export type DaemonToRelay =
-  | { t: 'frame'; ch: string; frame: ServerFrame }
+  | { t: 'frame'; ch: string; frame: ServerFrame | SealedFrame }
   | { t: 'close'; ch: string }
   | { t: 'trigger_result'; id: string; accepted: boolean; reason?: string }
   | { t: 'pong' }
@@ -27,6 +28,7 @@ export type ClientToRelay =
   | { type: 'relay.devices' }
   | { type: 'relay.attach'; device_id: string }
   | ClientFrame
+  | SealedFrame
 
 /** Quadros do relay para o cliente. */
 export type RelayToClient =
@@ -35,6 +37,7 @@ export type RelayToClient =
   | { type: 'relay.detached'; reason: string }
   | { type: 'relay.error'; message: string }
   | ServerFrame
+  | SealedFrame
 
 export const relayHeaders = {
   accountToken: 'x-agent-hub-account',

@@ -7,7 +7,7 @@ import type { Ledger } from '../cost/ledger.js'
 import type { Pricing } from '../cost/pricing.js'
 import type { HookContext, HookRunner } from '../hooks/runner.js'
 import { decide } from '../tools/policy.js'
-import type { ToolRegistry } from '../tools/registry.js'
+import type { SandboxOptions, ToolRegistry } from '../tools/registry.js'
 import { validateCall } from '../tools/validate.js'
 import type {
   ChatResult,
@@ -71,6 +71,7 @@ export interface RunnerDeps {
   preloadSkills?: Skill[]
   delegate?: (agent: string, task: string) => Promise<DelegationResult>
   hooks?: HookRunner
+  sandbox?: SandboxOptions
   signal?: AbortSignal
 }
 
@@ -384,7 +385,7 @@ export class AgentRunner {
     if (def.name === 'plan' || def.name === 'done') return `registrado: ${String(args.summary).slice(0, 200)}`
     const tool = this.deps.tools.get(def.name)
     if (!tool) throw new Error(`ferramenta nao registrada: ${def.name}`)
-    return tool.handler(args, { workspace: this.deps.workspace, signal: this.deps.signal })
+    return tool.handler(args, { workspace: this.deps.workspace, signal: this.deps.signal, sandbox: this.deps.sandbox })
   }
 
   private async delegate(agent: string, task: string): Promise<string> {

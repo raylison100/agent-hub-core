@@ -1,8 +1,16 @@
 import type { ToolDefinition } from '../types.js'
 
+export interface SandboxOptions {
+  image: string
+  network: boolean
+  memory?: string
+  cpus?: number
+}
+
 export interface ToolContext {
   workspace: string
   signal?: AbortSignal
+  sandbox?: SandboxOptions
 }
 
 export type ToolHandler = (args: Record<string, unknown>, ctx: ToolContext) => Promise<string>

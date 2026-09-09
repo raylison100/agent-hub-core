@@ -36,6 +36,14 @@ export const ProfileFrontmatterSchema = z.object({
     })
     .default({ system_ttl: '5m' }),
   provider_options: z.record(z.string(), z.unknown()).default({}),
+  sandbox: z
+    .object({
+      image: z.string().min(1),
+      network: z.boolean().default(false),
+      memory: z.string().optional(),
+      cpus: z.number().positive().optional(),
+    })
+    .optional(),
   phases: z
     .array(
       z.object({
@@ -53,6 +61,7 @@ export const ProfileFrontmatterSchema = z.object({
 
 export type ProfileFrontmatter = z.infer<typeof ProfileFrontmatterSchema>
 export type ProfilePhase = NonNullable<ProfileFrontmatter['phases']>[number]
+export type SandboxConfig = NonNullable<ProfileFrontmatter['sandbox']>
 
 export interface AgentProfile extends ProfileFrontmatter {
   system: string
