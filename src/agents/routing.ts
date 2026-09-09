@@ -16,20 +16,28 @@ export const RuleSchema = z.object({
   agent: z.string(),
 })
 
+export const ClassifierSchema = z.object({
+  agent: z.string(),
+  max_prompt_chars: z.number().int().positive().default(2000),
+})
+
 export const RoutingFileSchema = z.union([
   z.array(RuleSchema),
   z.object({
     intents: z.record(z.string(), z.array(z.string())).default({}),
     rules: z.array(RuleSchema).default([]),
+    classifier: ClassifierSchema.optional(),
   }),
 ])
 
 export type RuleWhen = z.infer<typeof RuleWhenSchema>
 export type Rule = z.infer<typeof RuleSchema>
+export type Classifier = z.infer<typeof ClassifierSchema>
 
 export interface Routing {
   intents: Record<string, string[]>
   rules: Rule[]
+  classifier?: Classifier
 }
 
 export interface RouteContext {
@@ -49,6 +57,28 @@ export function normalizeRouting(parsed: z.infer<typeof RoutingFileSchema>): Rou
   return Array.isArray(parsed) ? { intents: {}, rules: parsed } : parsed
 }
 
+/** Prompt curto para um modelo barato escolher a intencao entre as declaradas, respondendo so o nome. */
+export function classifierPrompt(intents: Record<string, string[]>, text: string, maxChars: number): string {
+  const options = Object.entries(intents)
+    .map(([name, keywords]) => `- ${name}: ${keywords.slice(0, 5).join(', ')}`)
+    .join('\n')
+  return [
+    'Classifique o pedido abaixo em uma das intencoes. Responda apenas com o nome da intencao, ou "nenhuma".',
+    '',
+    'Intencoes:',
+    options,
+    '',
+    'Pedido:',
+    text.slice(0, maxChars),
+  ].join('\n')
+}
+
+/** Le a resposta do classificador e devolve uma intencao declarada ou null. */
+export function parseClassifierAnswer(answer: string, intents: Record<string, string[]>): string | null {
+  const word = answer.trim().toLowerCase().replace(/[^a-z0-9_-]+.*$/s, '')
+  return word in intents ? word : null
+}
+
 /** Classifica a intencao por palavra chave, primeira intencao que casa vence. */
 export function classifyIntent(text: string, intents: Record<string, string[]>): string | null {
   const lower = text.toLowerCase()
@@ -58,9 +88,9 @@ export function classifyIntent(text: string, intents: Record<string, string[]>):
   return null
 }
 
-/** Primeira regra que casa decide o agente. Sem regra casando, devolve null. */
-export function route(routing: Routing, ctx: RouteContext): RouteResult | null {
-  const intent = classifyIntent(ctx.text, routing.intents)
+/** Primeira regra que casa decide o agente. Sem regra casando, devolve null. `intentOverride` vem do classificador por modelo. */
+export function route(routing: Routing, ctx: RouteContext, intentOverride?: string | null): RouteResult | null {
+  const intent = intentOverride === undefined ? classifyIntent(ctx.text, routing.intents) : intentOverride
   const tokens = approxTokens(ctx.text)
   const files = pathsIn(ctx.text)
   for (const rule of routing.rules) {

@@ -5,16 +5,28 @@ import { HookConfigSchema, type HookConfig } from '../hooks/runner.js'
 import { splitFrontmatter, loadSkills, type LoadError, type Skill } from './load.js'
 import { McpServerSchema, ProfileFrontmatterSchema, type AgentProfile, type McpServerConfig } from './schema.js'
 
+export const PluginEntrySchema = z
+  .object({
+    path: z.string().optional(),
+    git: z.string().url().optional(),
+    ref: z.string().optional(),
+    enabled: z.boolean().default(true),
+  })
+  .refine((e) => Boolean(e.path) !== Boolean(e.git), { message: 'informe path ou git, nunca ambos' })
+
 export const PluginsFileSchema = z.object({
-  plugins: z
-    .array(
-      z.object({
-        path: z.string(),
-        enabled: z.boolean().default(true),
-      }),
-    )
-    .default([]),
+  plugins: z.array(PluginEntrySchema).default([]),
 })
+
+export type PluginEntry = z.infer<typeof PluginEntrySchema>
+
+export const gitPluginsDir = '.plugins'
+
+/** Diretorio local de um plugin vindo de git, dentro do repositorio agents. */
+export function gitPluginDir(base: string, gitUrl: string): string {
+  const name = slug(gitUrl.replace(/\.git$/, '').split('/').slice(-2).join('-'))
+  return join(base, gitPluginsDir, name)
+}
 
 export const ProfileOverrideSchema = z.object({
   provider: z.enum(['anthropic', 'deepseek', 'openai', 'ollama']),
@@ -71,13 +83,14 @@ export function loadPlugin(dir: string, overrides: Record<string, ProfileOverrid
   return { name, dir, skills, profiles, mcp, hooks, errors }
 }
 
-export function loadPlugins(entries: { path: string; enabled: boolean }[], overrides: Record<string, ProfileOverride>, base: string): PluginBundle[] {
+export function loadPlugins(entries: PluginEntry[], overrides: Record<string, ProfileOverride>, base: string): PluginBundle[] {
   return entries
     .filter((e) => e.enabled)
     .map((e) => {
-      const dir = resolve(base, e.path)
+      const dir = e.git ? gitPluginDir(base, e.git) : resolve(base, e.path!)
       if (!existsSync(dir)) {
-        return { name: basename(dir), dir, skills: new Map(), profiles: new Map(), mcp: {}, hooks: [], errors: [{ file: dir, message: 'plugin nao encontrado' }] }
+        const message = e.git ? `plugin git ainda nao clonado; rode agent-hub-daemon plugins sync` : 'plugin nao encontrado'
+        return { name: basename(dir), dir, skills: new Map(), profiles: new Map(), mcp: {}, hooks: [], errors: [{ file: dir, message }] }
       }
       return loadPlugin(dir, overrides)
     })
