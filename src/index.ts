@@ -36,7 +36,7 @@ export {
 } from './agents/load.js'
 export { ToolRegistry, type RegisteredTool, type ToolContext, type ToolHandler } from './tools/registry.js'
 export { nativeTools } from './tools/native.js'
-export { McpBridge } from './tools/mcp.js'
+export { McpBridge, type McpPromptInfo, type McpResourceInfo } from './tools/mcp.js'
 export { validateCall, type ValidationResult } from './tools/validate.js'
 export { decide, defaultPolicy, isDestructive, riskFor } from './tools/policy.js'
 export { resolveInside, OutsideWorkspaceError } from './tools/workspace.js'

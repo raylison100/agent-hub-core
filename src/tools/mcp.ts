@@ -22,6 +22,19 @@ interface McpCallResult {
   isError?: boolean
 }
 
+export interface McpResourceInfo {
+  uri: string
+  name?: string
+  description?: string
+  mimeType?: string
+}
+
+export interface McpPromptInfo {
+  name: string
+  description?: string
+  arguments?: { name: string; description?: string; required?: boolean }[]
+}
+
 export class McpBridge {
   private readonly servers = new Map<string, Connected>()
 
@@ -46,6 +59,41 @@ export class McpBridge {
     const tools = listed.tools.map((t) => this.wrap(name, config, client, t))
     this.servers.set(name, { client, tools })
     return tools
+  }
+
+  /** Recursos expostos pelo servidor, para anexar a uma mensagem sob demanda. */
+  async resources(name: string): Promise<McpResourceInfo[]> {
+    const listed = (await this.client(name).listResources()) as { resources?: McpResourceInfo[] }
+    return listed.resources ?? []
+  }
+
+  async readResource(name: string, uri: string): Promise<string> {
+    const result = (await this.client(name).readResource({ uri })) as { contents?: { text?: string; blob?: string; mimeType?: string; uri: string }[] }
+    return (result.contents ?? [])
+      .map((c) => (typeof c.text === 'string' ? c.text : `[conteudo binario ${c.mimeType ?? ''} em ${c.uri}]`))
+      .join('\n')
+  }
+
+  /** Prompts do servidor, expostos como atalhos `/servidor:prompt`. */
+  async prompts(name: string): Promise<McpPromptInfo[]> {
+    const listed = (await this.client(name).listPrompts()) as { prompts?: McpPromptInfo[] }
+    return listed.prompts ?? []
+  }
+
+  async getPrompt(name: string, promptName: string, args: Record<string, string>): Promise<string> {
+    const result = (await this.client(name).getPrompt({ name: promptName, arguments: args })) as {
+      messages?: { role: string; content: { type?: string; text?: string } }[]
+    }
+    return (result.messages ?? [])
+      .map((m) => (m.content.type === 'text' && typeof m.content.text === 'string' ? m.content.text : ''))
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
+  private client(name: string): Client {
+    const s = this.servers.get(name)
+    if (!s) throw new Error(`servidor MCP nao conectado: ${name}`)
+    return s.client
   }
 
   async close(name?: string): Promise<void> {
