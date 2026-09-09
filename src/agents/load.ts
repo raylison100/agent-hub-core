@@ -2,11 +2,13 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import type { Policy } from '../types.js'
+import { RoutingFileSchema, RuleWhenSchema, emptyRouting, normalizeRouting, type Routing, type RuleWhen } from './routing.js'
 import {
   BudgetsFileSchema,
   McpFileSchema,
   PolicySchema,
   ProfileFrontmatterSchema,
+  SecretsFileSchema,
   type AgentProfile,
   type BudgetsFile,
   type McpFile,
@@ -27,6 +29,7 @@ export interface Skill {
   description: string
   dir: string
   body: string
+  activate?: RuleWhen
 }
 
 export interface AgentsRepo {
@@ -35,6 +38,8 @@ export interface AgentsRepo {
   skills: Map<string, Skill>
   budgets: BudgetsFile
   mcp: McpFile
+  secrets: string[]
+  routing: Routing
   errors: LoadError[]
 }
 
@@ -82,10 +87,11 @@ export function loadSkills(dir: string): { skills: Map<string, Skill>; errors: L
     if (!existsSync(file)) continue
     try {
       const { data, body } = splitFrontmatter(readFileSync(file, 'utf8'))
-      const front = data as { name?: unknown; description?: unknown }
+      const front = data as { name?: unknown; description?: unknown; activate?: unknown }
       const name = typeof front.name === 'string' ? front.name : entry.name
       const description = typeof front.description === 'string' ? front.description : ''
-      skills.set(name, { name, description, dir: join(dir, entry.name), body: body.trim() })
+      const activate = front.activate === undefined ? undefined : RuleWhenSchema.parse(front.activate)
+      skills.set(name, { name, description, dir: join(dir, entry.name), body: body.trim(), activate })
     } catch (err) {
       errors.push({ file, message: describe(err) })
     }
@@ -112,7 +118,9 @@ export function loadAgentsRepo(root: string): AgentsRepo {
   }
   const budgets = safeParse(join(root, 'policies', 'budgets.json'), BudgetsFileSchema, { agents: {} }, errors)
   const mcp = safeParse(join(root, 'mcp.json'), McpFileSchema, { servers: {} }, errors)
-  return { profiles: loaded.profiles, policies, skills: skillsLoaded.skills, budgets, mcp, errors }
+  const secrets = safeParse(join(root, 'policies', 'secrets.json'), SecretsFileSchema, { patterns: [] }, errors).patterns
+  const routing = normalizeRouting(safeParse(join(root, 'routing.json'), RoutingFileSchema, emptyRouting, errors))
+  return { profiles: loaded.profiles, policies, skills: skillsLoaded.skills, budgets, mcp, secrets, routing, errors }
 }
 
 function safeParse<T>(file: string, schema: { parse(v: unknown): T }, fallback: T, errors: LoadError[]): T {

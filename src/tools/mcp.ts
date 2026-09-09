@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import type { McpServerConfig } from '../agents/schema.js'
 import type { JsonSchema } from '../types.js'
 import { riskFor } from './policy.js'
@@ -26,15 +27,19 @@ export class McpBridge {
 
   constructor(private readonly env: NodeJS.ProcessEnv = process.env) {}
 
-  /** Sobe um servidor MCP por stdio e registra suas ferramentas com prefixo `servidor__`. */
+  /** Conecta a um servidor MCP por stdio ou HTTP e registra suas ferramentas com prefixo `servidor__`. */
   async connect(name: string, config: McpServerConfig): Promise<RegisteredTool[]> {
     const existing = this.servers.get(name)
     if (existing) return existing.tools
-    const transport = new StdioClientTransport({
-      command: config.command,
-      args: config.args,
-      env: { ...filteredEnv(this.env), ...resolveEnv(config.env, this.env) },
-    })
+    const transport = config.url
+      ? new StreamableHTTPClientTransport(new URL(config.url), {
+          requestInit: { headers: resolveEnv(config.headers, this.env) },
+        })
+      : new StdioClientTransport({
+          command: config.command!,
+          args: config.args,
+          env: { ...filteredEnv(this.env), ...resolveEnv(config.env, this.env) },
+        })
     const client = new Client({ name: 'agent-hub', version: '0.1.0' })
     await client.connect(transport)
     const listed = (await client.listTools()) as { tools: McpToolInfo[] }
@@ -84,16 +89,16 @@ function renderContent(content: unknown): string {
 
 function resolveEnv(declared: Record<string, string>, env: NodeJS.ProcessEnv): Record<string, string> {
   const out: Record<string, string> = {}
-  for (const [k, v] of Object.entries(declared)) {
-    if (v.startsWith('$')) {
-      const value = env[v.slice(1)]
-      if (value === undefined) throw new Error(`variavel ${v.slice(1)} nao definida para o MCP`)
-      out[k] = value
-      continue
-    }
-    out[k] = v
-  }
+  for (const [k, v] of Object.entries(declared)) out[k] = expand(v, env)
   return out
+}
+
+function expand(value: string, env: NodeJS.ProcessEnv): string {
+  return value.replace(/\$\{?([A-Z0-9_]+)\}?/g, (_, name: string) => {
+    const resolved = env[name]
+    if (resolved === undefined) throw new Error(`variavel ${name} nao definida para o MCP`)
+    return resolved
+  })
 }
 
 function filteredEnv(env: NodeJS.ProcessEnv): Record<string, string> {

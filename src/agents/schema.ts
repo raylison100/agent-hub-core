@@ -59,11 +59,19 @@ export const BudgetsFileSchema = z.object({
 
 export type BudgetsFile = z.infer<typeof BudgetsFileSchema>
 
-export const McpServerSchema = z.object({
-  command: z.string(),
-  args: z.array(z.string()).default([]),
-  env: z.record(z.string(), z.string()).default({}),
-  risk: z.record(z.string(), z.enum(['read', 'write', 'exec'])).default({ '*': 'write' }),
+export const McpServerSchema = z
+  .object({
+    command: z.string().optional(),
+    args: z.array(z.string()).default([]),
+    env: z.record(z.string(), z.string()).default({}),
+    url: z.string().url().optional(),
+    headers: z.record(z.string(), z.string()).default({}),
+    risk: z.record(z.string(), z.enum(['read', 'write', 'exec'])).default({ '*': 'write' }),
+  })
+  .refine((s) => Boolean(s.command) !== Boolean(s.url), { message: 'informe command (stdio) ou url (http), nunca ambos' })
+
+export const SecretsFileSchema = z.object({
+  patterns: z.array(z.string()).default([]),
 })
 
 export const McpFileSchema = z.object({

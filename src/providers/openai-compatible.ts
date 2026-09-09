@@ -69,6 +69,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       cacheControl: false,
       countTokens: false,
       reasoningLevels: this.opts.sendReasoningEffort ?? false,
+      historyEditable: true,
     }
   }
 

@@ -1,5 +1,6 @@
 import type { AgentProfile } from '../agents/schema.js'
 import type { Skill } from '../agents/load.js'
+import { compactHistory, estimateAll, needsCompaction, pruneToolResults, type Summarizer } from '../context/compact.js'
 import { approxTokens, estimateNextInput } from '../context/estimate.js'
 import { Budget, BudgetExceededError, type BudgetWarning } from '../cost/budget.js'
 import type { Ledger } from '../cost/ledger.js'
@@ -11,6 +12,7 @@ import type {
   ChatResult,
   Decision,
   Message,
+  Part,
   Policy,
   ProviderAdapter,
   ToolCallPart,
@@ -37,6 +39,8 @@ export type RunEvent =
   | { type: 'usage'; step: number; usage: Usage; costUsd: number; model: string; latencyMs: number }
   | { type: 'budget_warning'; warning: BudgetWarning }
   | { type: 'escalation'; from: string; to: string; reason: string }
+  | { type: 'compaction'; mode: 'prune' | 'summary'; before: number; after: number }
+  | { type: 'skills_loaded'; names: string[] }
   | { type: 'run_finished'; stop: RunStop; steps: number; costUsd: number; error?: string }
 
 export interface RunnerDeps {
@@ -51,6 +55,9 @@ export interface RunnerDeps {
   workspace: string
   approve: (call: ToolCallPart, def: ToolDefinition) => Promise<'allow' | 'deny'>
   emit: (event: RunEvent) => void
+  summarize?: Summarizer
+  redact?: (text: string) => string
+  preloadSkills?: Skill[]
   signal?: AbortSignal
 }
 
@@ -86,15 +93,24 @@ export class AgentRunner {
 
   async run(input: RunInput): Promise<RunResult> {
     const { profile, emit } = this.deps
-    const appended: Message[] = [{ role: 'user', parts: [{ type: 'text', text: input.userText }] }]
-    const messages = [...input.history, ...appended]
     const system = this.systemPrompt()
     const tools = this.toolDefinitions()
+    const userMessage = this.userMessage(input.userText)
+    let appended: Message[] = [userMessage]
+    let messages = [...input.history, userMessage]
     let steps = 0
     let costUsd = 0
     let invalid = 0
     let lastInput = this.deps.ledger.lastInputTokens(input.sessionId)
     let sinceLast: Message[] = [...appended]
+
+    const compacted = await this.compactIfNeeded(system, messages, input.history, lastInput, sinceLast)
+    if (compacted) {
+      messages = compacted
+      appended = compacted
+      lastInput = null
+      sinceLast = []
+    }
 
     for (;;) {
       if (this.deps.signal?.aborted) return this.finish('cancelled', appended, steps, costUsd)
@@ -159,6 +175,31 @@ export class AgentRunner {
     }
   }
 
+  private async compactIfNeeded(
+    system: string,
+    messages: Message[],
+    history: Message[],
+    lastInput: number | null,
+    sinceLast: Message[],
+  ): Promise<Message[] | null> {
+    const { profile, adapter, summarize, emit } = this.deps
+    const policy = { window: profile.context.window, compactAt: profile.context.compact_at }
+    let estimate = estimateNextInput(lastInput, sinceLast, messages, system)
+    if (!needsCompaction(estimate, policy) || history.length === 0) return null
+    let current = messages
+    if (adapter.capabilities().historyEditable) {
+      current = pruneToolResults(current)
+      const after = estimateAll(system, current)
+      emit({ type: 'compaction', mode: 'prune', before: estimate, after })
+      estimate = after
+    }
+    if (needsCompaction(estimate, policy) && summarize) {
+      current = await compactHistory(current, summarize)
+      emit({ type: 'compaction', mode: 'summary', before: estimate, after: estimateAll(system, current) })
+    }
+    return current
+  }
+
   private async executeCall(call: ToolCallPart, defs: ToolDefinition[]): Promise<{ part: ToolResultPart; invalid: boolean }> {
     const def = defs.find((d) => d.name === call.name)
     if (!def) return { part: errorResult(call, `ferramenta desconhecida: ${call.name}`), invalid: true }
@@ -176,14 +217,18 @@ export class AgentRunner {
     }
     const started = Date.now()
     try {
-      const content = await this.invoke(def, validated.args)
+      const content = this.clean(await this.invoke(def, validated.args))
       this.deps.emit({ type: 'tool_result', callId: call.id, name: def.name, content, isError: false, ms: Date.now() - started })
       return { part: { type: 'tool_result', callId: call.id, content, isError: false }, invalid: false }
     } catch (err) {
-      const content = describe(err)
+      const content = this.clean(describe(err))
       this.deps.emit({ type: 'tool_result', callId: call.id, name: def.name, content, isError: true, ms: Date.now() - started })
       return { part: { type: 'tool_result', callId: call.id, content, isError: true }, invalid: false }
     }
+  }
+
+  private clean(text: string): string {
+    return this.deps.redact ? this.deps.redact(text) : text
   }
 
   private async invoke(def: ToolDefinition, args: Record<string, unknown>): Promise<string> {
@@ -196,7 +241,16 @@ export class AgentRunner {
   private loadSkill(name: string): string {
     const skill = this.deps.skills.get(name)
     if (!skill || !this.deps.profile.skills.includes(name)) throw new Error(`skill nao disponivel: ${name}`)
+    this.deps.emit({ type: 'skills_loaded', names: [name] })
     return skill.body
+  }
+
+  private userMessage(text: string): Message {
+    const parts: Part[] = [{ type: 'text', text }]
+    const preload = this.deps.preloadSkills ?? []
+    for (const s of preload) parts.push({ type: 'text', text: `Instrucoes da skill ${s.name}, ativada por regra:\n\n${s.body}` })
+    if (preload.length > 0) this.deps.emit({ type: 'skills_loaded', names: preload.map((s) => s.name) })
+    return { role: 'user', parts }
   }
 
   private toolDefinitions(): ToolDefinition[] {

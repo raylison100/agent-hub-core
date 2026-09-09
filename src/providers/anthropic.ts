@@ -45,7 +45,7 @@ export class AnthropicAdapter implements ProviderAdapter {
   }
 
   capabilities(): Capabilities {
-    return { streaming: true, cacheControl: true, countTokens: true, reasoningLevels: true }
+    return { streaming: true, cacheControl: true, countTokens: true, reasoningLevels: true, historyEditable: false }
   }
 
   async countTokens(req: ChatRequest): Promise<number> {

@@ -15,7 +15,7 @@ export interface SessionSummary {
 
 export type ClientFrame =
   | { type: 'auth'; token: string; protocol_version: number; client: string }
-  | { type: 'session.create'; agent: string; workspace: string; title?: string }
+  | { type: 'session.create'; agent?: string; workspace: string; title?: string; text?: string }
   | { type: 'session.list'; limit?: number }
   | { type: 'session.get'; session_id: string }
   | { type: 'run.start'; session_id: string; text: string }
@@ -30,7 +30,8 @@ export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
   | { type: 'auth.error'; message: string }
   | { type: 'error'; message: string; ref?: string }
-  | { type: 'session.created'; session: SessionSummary }
+  | { type: 'session.created'; session: SessionSummary; routed?: { intent: string | null; rule: unknown } }
+  | { type: 'budget.overridden'; run_id: string; scope: string; limit_usd: number }
   | { type: 'session.list'; sessions: SessionSummary[] }
   | { type: 'session.get'; session: SessionSummary; messages: Message[] }
   | { type: 'session.updated'; session: SessionSummary }

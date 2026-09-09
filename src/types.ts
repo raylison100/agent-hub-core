@@ -39,6 +39,7 @@ export interface Message {
   parts: Part[]
   raw?: unknown
   rawProvider?: string
+  kind?: 'compaction'
 }
 
 export type JsonSchema = Record<string, unknown>
@@ -82,6 +83,7 @@ export interface Capabilities {
   cacheControl: boolean
   countTokens: boolean
   reasoningLevels: boolean
+  historyEditable: boolean
 }
 
 export interface ProviderAdapter {
