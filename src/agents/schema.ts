@@ -94,6 +94,36 @@ export const ScheduleSchema = z
 export type ScheduleInput = z.input<typeof ScheduleSchema>
 export type ScheduleParsed = z.infer<typeof ScheduleSchema>
 
+export const TriggerSchema = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+  source: z.enum(['gitlab', 'github', 'generic']),
+  secret_ref: z.string().regex(/^\$[A-Z0-9_]+$/, 'secret_ref deve ser o nome de uma variavel de ambiente com $'),
+  filter: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({}),
+  agent: z.string(),
+  workspace: z.string(),
+  prompt: z.string().min(1),
+  mode: z.enum(['draft', 'normal']).default('draft'),
+  budget: z.object({ run_usd: z.number().nonnegative(), day_usd: z.number().nonnegative() }),
+  dedupe: z.string().optional(),
+  overlap: z.enum(['queue', 'skip']).default('queue'),
+  enabled: z.boolean().default(true),
+})
+
+export type TriggerParsed = z.infer<typeof TriggerSchema>
+
+export const WebhookSchema = z.object({
+  name: z.string().min(1),
+  url: z.string().url(),
+  secret_ref: z.string().regex(/^\$[A-Z0-9_]+$/),
+  events: z.array(z.string()).min(1),
+})
+
+export const WebhooksFileSchema = z.object({
+  hooks: z.array(WebhookSchema).default([]),
+})
+
+export type WebhookConfig = z.infer<typeof WebhookSchema>
+
 export const McpFileSchema = z.object({
   servers: z.record(z.string(), McpServerSchema).default({}),
 })

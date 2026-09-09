@@ -37,6 +37,28 @@ export interface ScheduleStatus extends ScheduleSpec {
   todayUsd: number
 }
 
+export interface TriggerSpec {
+  id: string
+  source: 'gitlab' | 'github' | 'generic'
+  secret_ref: string
+  filter: Record<string, string | number | boolean>
+  agent: string
+  workspace: string
+  prompt: string
+  mode: 'draft' | 'normal'
+  budget: { run_usd: number; day_usd: number }
+  dedupe?: string
+  overlap: 'queue' | 'skip'
+  enabled: boolean
+}
+
+export interface TriggerStatus extends TriggerSpec {
+  sourceKind: 'file' | 'db'
+  lastFiredAt: number | null
+  running: boolean
+  todayUsd: number
+}
+
 export interface AutomationRun {
   id: string
   kind: 'schedule' | 'trigger'
@@ -68,6 +90,9 @@ export type ClientFrame =
   | { type: 'automation.pause' }
   | { type: 'automation.resume' }
   | { type: 'automation.runs'; automation_id?: string; limit?: number }
+  | { type: 'trigger.list' }
+  | { type: 'trigger.upsert'; trigger: TriggerSpec }
+  | { type: 'trigger.delete'; id: string }
 
 export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
@@ -93,6 +118,9 @@ export type ServerFrame =
   | { type: 'automation.finished'; kind: 'schedule' | 'trigger'; id: string; session_id: string; run_id: string; stop: string; cost_usd: number }
   | { type: 'automation.error'; kind: 'schedule' | 'trigger'; id: string; message: string }
   | { type: 'automation.runs'; runs: AutomationRun[] }
+  | { type: 'trigger.list'; triggers: TriggerStatus[] }
+  | { type: 'trigger.saved'; trigger: TriggerStatus }
+  | { type: 'trigger.deleted'; id: string }
 
 export interface AgentSummary {
   name: string

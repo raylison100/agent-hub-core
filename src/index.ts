@@ -11,8 +11,13 @@ export {
   McpServerSchema,
   SecretsFileSchema,
   ScheduleSchema,
+  TriggerSchema,
+  WebhookSchema,
+  WebhooksFileSchema,
   type ScheduleInput,
   type ScheduleParsed,
+  type TriggerParsed,
+  type WebhookConfig,
   type AgentProfile,
   type BudgetsFile,
   type McpFile,
@@ -54,3 +59,4 @@ export {
 } from './agents/routing.js'
 export { AgentRunner, budgetFor, type RunEvent, type RunInput, type RunResult, type RunStop, type RunnerDeps } from './loop/runner.js'
 export * from './protocol/frames.js'
+export * from './protocol/relay.js'

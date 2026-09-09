@@ -9,9 +9,11 @@ import {
   PolicySchema,
   ProfileFrontmatterSchema,
   SecretsFileSchema,
+  WebhooksFileSchema,
   type AgentProfile,
   type BudgetsFile,
   type McpFile,
+  type WebhookConfig,
 } from './schema.js'
 
 export interface LoadError {
@@ -40,6 +42,7 @@ export interface AgentsRepo {
   mcp: McpFile
   secrets: string[]
   routing: Routing
+  webhooks: WebhookConfig[]
   errors: LoadError[]
 }
 
@@ -120,7 +123,8 @@ export function loadAgentsRepo(root: string): AgentsRepo {
   const mcp = safeParse(join(root, 'mcp.json'), McpFileSchema, { servers: {} }, errors)
   const secrets = safeParse(join(root, 'policies', 'secrets.json'), SecretsFileSchema, { patterns: [] }, errors).patterns
   const routing = normalizeRouting(safeParse(join(root, 'routing.json'), RoutingFileSchema, emptyRouting, errors))
-  return { profiles: loaded.profiles, policies, skills: skillsLoaded.skills, budgets, mcp, secrets, routing, errors }
+  const webhooks = safeParse(join(root, 'webhooks.json'), WebhooksFileSchema, { hooks: [] }, errors).hooks
+  return { profiles: loaded.profiles, policies, skills: skillsLoaded.skills, budgets, mcp, secrets, routing, webhooks, errors }
 }
 
 function safeParse<T>(file: string, schema: { parse(v: unknown): T }, fallback: T, errors: LoadError[]): T {
