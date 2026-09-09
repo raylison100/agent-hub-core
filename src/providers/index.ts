@@ -26,7 +26,7 @@ export class MissingApiKeyError extends Error {
   }
 }
 
-/** Resolve o modelo efetivo do perfil, trocando para o modelo de raciocinio do DeepSeek quando o nivel pede. */
+/** Resolve o modelo efetivo do perfil. Mantem a troca legada deepseek-chat para deepseek-reasoner; no V4 o raciocinio e por parametro. */
 export function resolveModel(profile: Pick<AgentProfile, 'provider' | 'model' | 'reasoning'>): string {
   const deep = profile.provider === 'deepseek' && profile.model === 'deepseek-chat'
   const high = profile.reasoning === 'high' || profile.reasoning === 'max'
@@ -63,6 +63,7 @@ export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = pr
     apiKey,
     baseURL,
     sendReasoningEffort: profile.provider === 'openai',
+    deepseekThinking: profile.provider === 'deepseek' && model.startsWith('deepseek-v4'),
     temperature: numberOpt(opts, 'temperature'),
     seed: numberOpt(opts, 'seed'),
   })

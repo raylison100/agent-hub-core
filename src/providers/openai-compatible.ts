@@ -27,9 +27,14 @@ export interface OpenAICompatibleOptions {
   apiKey: string
   baseURL?: string
   sendReasoningEffort?: boolean
+  deepseekThinking?: boolean
   temperature?: number
   seed?: number
   extraBody?: Record<string, unknown>
+}
+
+interface ReasoningRaw {
+  reasoning_content?: string
 }
 
 interface UsageWithCacheFields extends CompletionUsage {
@@ -48,6 +53,13 @@ const effortByReasoning: Record<Reasoning, 'low' | 'medium' | 'high'> = {
   medium: 'medium',
   high: 'high',
   max: 'high',
+}
+
+const deepseekEffort: Record<Reasoning, 'low' | 'high' | 'max'> = {
+  low: 'low',
+  medium: 'high',
+  high: 'high',
+  max: 'max',
 }
 
 export class OpenAICompatibleAdapter implements ProviderAdapter {
@@ -77,6 +89,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
     const started = Date.now()
     const stream = await this.client.chat.completions.create(this.buildParams(req), { signal: req.signal })
     const text: string[] = []
+    const reasoning: string[] = []
     const calls = new Map<number, ToolCallAccumulator>()
     let finish: string | null = null
     let usage: UsageWithCacheFields | null = null
@@ -89,11 +102,14 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
         text.push(delta.content)
         on.onText?.(delta.content)
       }
-      if (delta.reasoning_content) on.onReasoning?.(delta.reasoning_content)
+      if (delta.reasoning_content) {
+        reasoning.push(delta.reasoning_content)
+        on.onReasoning?.(delta.reasoning_content)
+      }
       for (const tc of delta.tool_calls ?? []) accumulateToolCall(calls, tc)
       if (choice.finish_reason) finish = choice.finish_reason
     }
-    const message = buildAssistant(text.join(''), calls)
+    const message = buildAssistant(text.join(''), calls, reasoning.join(''))
     return {
       message,
       toolCalls: message.parts.filter((p): p is ToolCallPart => p.type === 'tool_call'),
@@ -119,7 +135,14 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
     if (this.opts.sendReasoningEffort) params.reasoning_effort = effortByReasoning[req.reasoning]
     if (this.opts.temperature !== undefined) params.temperature = this.opts.temperature
     if (this.opts.seed !== undefined) params.seed = this.opts.seed
-    return Object.assign(params, this.opts.extraBody ?? {})
+    return Object.assign(params, this.deepseekParams(req.reasoning), this.opts.extraBody ?? {})
+  }
+
+  /** DeepSeek V4: raciocinio ligado por `thinking` e `reasoning_effort`; `low` no perfil desliga o raciocinio. */
+  private deepseekParams(reasoning: Reasoning): Record<string, unknown> {
+    if (!this.opts.deepseekThinking) return {}
+    if (reasoning === 'low') return { thinking: { type: 'disabled' } }
+    return { thinking: { type: 'enabled' }, reasoning_effort: deepseekEffort[reasoning] }
   }
 }
 
@@ -149,7 +172,7 @@ function accumulateToolCall(
   calls.set(tc.index, current)
 }
 
-function buildAssistant(text: string, calls: Map<number, ToolCallAccumulator>): Message {
+function buildAssistant(text: string, calls: Map<number, ToolCallAccumulator>, reasoning: string): Message {
   const parts: Part[] = []
   if (text.length > 0) parts.push({ type: 'text', text })
   for (const [index, call] of calls) {
@@ -161,7 +184,12 @@ function buildAssistant(text: string, calls: Map<number, ToolCallAccumulator>): 
       rawArgs: call.args,
     })
   }
-  return { role: 'assistant', parts }
+  const message: Message = { role: 'assistant', parts }
+  if (reasoning.length > 0) {
+    message.raw = { reasoning_content: reasoning } satisfies ReasoningRaw
+    message.rawProvider = 'openai-compatible'
+  }
+  return message
 }
 
 function parseArgs(raw: string): unknown {
@@ -197,11 +225,13 @@ function toAssistantMessage(m: Message): ChatMessage {
     type: 'function' as const,
     function: { name: p.name, arguments: p.rawArgs ?? JSON.stringify(p.args ?? {}) },
   }))
-  const message: OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam = {
+  const message: OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam & ReasoningRaw = {
     role: 'assistant',
     content: text.length > 0 ? text : null,
   }
   if (toolCalls.length > 0) message.tool_calls = toolCalls
+  const raw = m.rawProvider === 'openai-compatible' ? (m.raw as ReasoningRaw | undefined) : undefined
+  if (raw?.reasoning_content) message.reasoning_content = raw.reasoning_content
   return message
 }
 
