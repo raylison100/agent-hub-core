@@ -1,7 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse as parseYaml } from 'yaml'
+import { HooksFileSchema, type HookConfig } from '../hooks/runner.js'
 import type { Policy } from '../types.js'
+import { OverridesFileSchema, PluginsFileSchema, loadPlugins, type PluginBundle } from './plugins.js'
 import { RoutingFileSchema, RuleWhenSchema, emptyRouting, normalizeRouting, type Routing, type RuleWhen } from './routing.js'
 import {
   BudgetsFileSchema,
@@ -43,6 +45,8 @@ export interface AgentsRepo {
   secrets: string[]
   routing: Routing
   webhooks: WebhookConfig[]
+  hooks: HookConfig[]
+  plugins: PluginBundle[]
   errors: LoadError[]
 }
 
@@ -124,7 +128,21 @@ export function loadAgentsRepo(root: string): AgentsRepo {
   const secrets = safeParse(join(root, 'policies', 'secrets.json'), SecretsFileSchema, { patterns: [] }, errors).patterns
   const routing = normalizeRouting(safeParse(join(root, 'routing.json'), RoutingFileSchema, emptyRouting, errors))
   const webhooks = safeParse(join(root, 'webhooks.json'), WebhooksFileSchema, { hooks: [] }, errors).hooks
-  return { profiles: loaded.profiles, policies, skills: skillsLoaded.skills, budgets, mcp, secrets, routing, webhooks, errors }
+  const hooks = safeParse(join(root, 'hooks.json'), HooksFileSchema, { hooks: [] }, errors).hooks
+  const overrides = safeParse(join(root, 'overrides.json'), OverridesFileSchema, {}, errors)
+  const pluginEntries = safeParse(join(root, 'plugins.json'), PluginsFileSchema, { plugins: [] }, errors).plugins
+  const plugins = loadPlugins(pluginEntries, overrides, root)
+  for (const plugin of plugins) {
+    errors.push(...plugin.errors)
+    for (const [k, v] of plugin.skills) skillsLoaded.skills.set(k, v)
+    for (const [k, v] of plugin.profiles) {
+      if (loaded.profiles.has(k)) errors.push({ file: v.file, message: `perfil ${k} conflita com perfil local; ignorado` })
+      else loaded.profiles.set(k, v)
+    }
+    for (const [k, v] of Object.entries(plugin.mcp)) mcp.servers[k] = v
+    hooks.push(...plugin.hooks)
+  }
+  return { profiles: loaded.profiles, policies, skills: skillsLoaded.skills, budgets, mcp, secrets, routing, webhooks, hooks, plugins, errors }
 }
 
 function safeParse<T>(file: string, schema: { parse(v: unknown): T }, fallback: T, errors: LoadError[]): T {

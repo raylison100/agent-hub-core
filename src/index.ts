@@ -57,6 +57,34 @@ export {
   type RouteContext,
   type RouteResult,
 } from './agents/routing.js'
-export { AgentRunner, budgetFor, type RunEvent, type RunInput, type RunResult, type RunStop, type RunnerDeps } from './loop/runner.js'
+export {
+  AgentRunner,
+  budgetFor,
+  type DelegationResult,
+  type RunEvent,
+  type RunInput,
+  type RunResult,
+  type RunStop,
+  type RunnerDeps,
+} from './loop/runner.js'
+export {
+  HookRunner,
+  HookConfigSchema,
+  HooksFileSchema,
+  interpret as interpretHook,
+  type HookConfig,
+  type HookContext,
+  type HookDecision,
+  type HookEvent,
+} from './hooks/runner.js'
+export {
+  loadPlugin,
+  loadPlugins,
+  PluginsFileSchema,
+  OverridesFileSchema,
+  ProfileOverrideSchema,
+  type PluginBundle,
+  type ProfileOverride,
+} from './agents/plugins.js'
 export * from './protocol/frames.js'
 export * from './protocol/relay.js'
