@@ -149,6 +149,25 @@ export class Ledger {
     return rows.map((r) => ({ key: r.key, ...toTotals(r) }))
   }
 
+  /** Linhas brutas do ledger em CSV, para analise externa. */
+  exportCsv(filter: LedgerFilter = {}): { csv: string; rows: number } {
+    const { where, params } = buildWhere(filter)
+    const rows = this.db
+      .prepare(
+        `SELECT ts, session_id, run_id, parent_run_id, step, agent, provider, model, input, output, cache_read, cache_write,
+                reasoning, usage_missing, cost_usd, pricing_version, latency_ms, stop_reason FROM ledger ${where} ORDER BY id`,
+      )
+      .all(...params) as Record<string, string | number | null>[]
+    const header = [
+      'ts', 'iso', 'session_id', 'run_id', 'parent_run_id', 'step', 'agent', 'provider', 'model', 'input', 'output', 'cache_read',
+      'cache_write', 'reasoning', 'usage_missing', 'cost_usd', 'pricing_version', 'latency_ms', 'stop_reason',
+    ]
+    const lines = rows.map((r) =>
+      [r.ts, new Date(Number(r.ts)).toISOString(), ...header.slice(2).map((h) => r[h] ?? '')].map(csvCell).join(','),
+    )
+    return { csv: [header.join(','), ...lines].join('\n'), rows: rows.length }
+  }
+
   lastInputTokens(sessionId: string): number | null {
     const row = this.db
       .prepare(
@@ -184,6 +203,11 @@ function buildWhere(filter: LedgerFilter): { where: string; params: (string | nu
     params.push(filter.until)
   }
   return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params }
+}
+
+function csvCell(v: string | number | null | undefined): string {
+  const s = v === null || v === undefined ? '' : String(v)
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
 function toTotals(row: TotalsRow): LedgerTotals {

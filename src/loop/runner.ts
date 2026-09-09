@@ -44,6 +44,7 @@ export type RunEvent =
   | { type: 'skills_loaded'; names: string[] }
   | { type: 'delegation'; phase: 'start' | 'end'; agent: string; runId: string; task: string; costUsd?: number; stop?: string }
   | { type: 'hook'; event: string; tool?: string; allow: boolean; reason?: string }
+  | { type: 'phase'; index: number; name: string; tools: string[] }
   | { type: 'run_finished'; stop: RunStop; steps: number; costUsd: number; error?: string }
 
 export interface DelegationResult {
@@ -101,6 +102,21 @@ const loadSkillTool: ToolDefinition = {
   },
 }
 
+const signalTools: ToolDefinition[] = ['plan', 'done'].map((name) => ({
+  name,
+  description:
+    name === 'plan'
+      ? 'Sinaliza que a fase de entendimento terminou. Informe o plano em summary.'
+      : 'Sinaliza que a fase atual terminou. Informe em summary o que foi feito.',
+  risk: 'read',
+  inputSchema: {
+    type: 'object',
+    properties: { summary: { type: 'string' } },
+    required: ['summary'],
+    additionalProperties: false,
+  },
+}))
+
 function delegateTool(agents: string[]): ToolDefinition {
   return {
     name: 'delegate',
@@ -123,14 +139,18 @@ export class AgentRunner {
   private steps = 0
   private costUsd = 0
   private hookCtx!: HookContext
+  private phaseIndex = 0
+  private phaseSteps = 0
+  private phasesDone = false
 
   constructor(private readonly deps: RunnerDeps) {}
 
   async run(input: RunInput): Promise<RunResult> {
     const { profile, emit } = this.deps
     this.hookCtx = { sessionId: input.sessionId, runId: input.runId, agent: profile.name, workspace: this.deps.workspace }
-    const system = this.systemPrompt()
-    const tools = this.toolDefinitions()
+    const baseSystem = this.systemPrompt()
+    const allTools = this.toolDefinitions()
+    this.announcePhase(allTools)
     const userMessage = this.userMessage(input.userText)
     let appended: Message[] = [userMessage]
     let messages = [...input.history, userMessage]
@@ -141,7 +161,7 @@ export class AgentRunner {
     const gate = await this.runStartHook(input.userText)
     if (gate) return this.finish('error', appended, gate)
 
-    const compacted = await this.compactIfNeeded(system, messages, input.history, lastInput, sinceLast)
+    const compacted = await this.compactIfNeeded(baseSystem, messages, input.history, lastInput, sinceLast)
     if (compacted) {
       messages = compacted
       appended = compacted
@@ -152,7 +172,10 @@ export class AgentRunner {
     for (;;) {
       if (this.deps.signal?.aborted) return this.finish('cancelled', appended)
       if (this.steps >= profile.max_steps) return this.finish('max_steps', appended)
+      if (this.phasesDone) return this.finish('end', appended)
 
+      const system = this.phaseSystem(baseSystem)
+      const tools = this.phaseTools(allTools)
       const estimatedInput = estimateNextInput(lastInput, sinceLast, messages, system)
       const budgetStop = this.checkBudget(estimatedInput)
       if (budgetStop) return this.finish('budget_exceeded', appended, budgetStop)
@@ -181,6 +204,7 @@ export class AgentRunner {
       }
 
       this.steps += 1
+      this.phaseSteps += 1
       this.costUsd += this.record(input, this.steps, result)
       lastInput = result.usage.missing ? estimatedInput : result.usage.input + result.usage.cacheRead + result.usage.cacheWrite
       sinceLast = []
@@ -198,6 +222,7 @@ export class AgentRunner {
         const outcome = await this.executeCall(call, tools)
         if (outcome.invalid) anyInvalid = true
         results.push(outcome.part)
+        if (!outcome.part.isError) this.advancePhase(call.name, allTools)
       }
       const toolMessage: Message = { role: 'tool', parts: results }
       messages.push(toolMessage)
@@ -208,7 +233,64 @@ export class AgentRunner {
         invalid += 1
         if (invalid > profile.repair_attempts) return this.finish('tool_call_invalid', appended)
       }
+      this.advancePhaseBySteps(allTools)
     }
+  }
+
+  private phaseTools(all: ToolDefinition[]): ToolDefinition[] {
+    const phase = this.currentPhase()
+    if (!phase) return all
+    const allowed = new Set(phase.tools)
+    const chosen = all.filter((t) => allowed.has(t.name))
+    const signal = phase.until.tool_called
+    if (signal && !chosen.some((t) => t.name === signal)) {
+      const def = signalTools.find((t) => t.name === signal)
+      if (def) chosen.push(def)
+    }
+    return chosen.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  private phaseSystem(base: string): string {
+    const phase = this.currentPhase()
+    if (!phase) return base
+    const signal = phase.until.tool_called ? `Ao concluir esta fase, chame a ferramenta ${phase.until.tool_called}.` : ''
+    const limit = phase.until.max_steps ? `Esta fase termina sozinha em ${phase.until.max_steps} passos.` : ''
+    return `${base}\n\nFase atual: ${phase.name}. ${phase.instructions ?? ''} ${signal} ${limit}`.trim()
+  }
+
+  private currentPhase() {
+    const phases = this.deps.profile.phases
+    if (!phases || phases.length === 0 || this.phasesDone) return undefined
+    return phases[this.phaseIndex]
+  }
+
+  private advancePhase(toolName: string, all: ToolDefinition[]): void {
+    const phase = this.currentPhase()
+    if (!phase || phase.until.tool_called !== toolName) return
+    this.nextPhase(all)
+  }
+
+  private advancePhaseBySteps(all: ToolDefinition[]): void {
+    const phase = this.currentPhase()
+    if (!phase || !phase.until.max_steps || this.phaseSteps < phase.until.max_steps) return
+    this.nextPhase(all)
+  }
+
+  private nextPhase(all: ToolDefinition[]): void {
+    const phases = this.deps.profile.phases ?? []
+    this.phaseIndex += 1
+    this.phaseSteps = 0
+    if (this.phaseIndex >= phases.length) {
+      this.phasesDone = true
+      return
+    }
+    this.announcePhase(all)
+  }
+
+  private announcePhase(all: ToolDefinition[]): void {
+    const phase = this.currentPhase()
+    if (!phase) return
+    this.deps.emit({ type: 'phase', index: this.phaseIndex, name: phase.name, tools: this.phaseTools(all).map((t) => t.name) })
   }
 
   private async runStartHook(text: string): Promise<string | undefined> {
@@ -299,6 +381,7 @@ export class AgentRunner {
   private async invoke(def: ToolDefinition, args: Record<string, unknown>): Promise<string> {
     if (def.name === 'load_skill') return this.loadSkill(String(args.name))
     if (def.name === 'delegate') return this.delegate(String(args.agent), String(args.task))
+    if (def.name === 'plan' || def.name === 'done') return `registrado: ${String(args.summary).slice(0, 200)}`
     const tool = this.deps.tools.get(def.name)
     if (!tool) throw new Error(`ferramenta nao registrada: ${def.name}`)
     return tool.handler(args, { workspace: this.deps.workspace, signal: this.deps.signal })
@@ -336,6 +419,12 @@ export class AgentRunner {
     const defs = tools.definitions(wanted)
     if (profile.skills.length > 0) defs.push(loadSkillTool)
     if (profile.delegates.length > 0 && this.deps.delegate) defs.push(delegateTool(profile.delegates))
+    for (const phase of profile.phases ?? []) {
+      for (const name of phase.tools) {
+        const signal = signalTools.find((t) => t.name === name)
+        if (signal && !defs.some((d) => d.name === name)) defs.push(signal)
+      }
+    }
     return defs.sort((a, b) => a.name.localeCompare(b.name))
   }
 

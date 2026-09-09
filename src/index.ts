@@ -19,6 +19,7 @@ export {
   type TriggerParsed,
   type WebhookConfig,
   type AgentProfile,
+  type ProfilePhase,
   type BudgetsFile,
   type McpFile,
   type McpServerConfig,
@@ -88,3 +89,4 @@ export {
 } from './agents/plugins.js'
 export * from './protocol/frames.js'
 export * from './protocol/relay.js'
+export { NodeDaemonClient, type NodeClientOptions } from './protocol/node-client.js'

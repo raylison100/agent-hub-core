@@ -36,9 +36,23 @@ export const ProfileFrontmatterSchema = z.object({
     })
     .default({ system_ttl: '5m' }),
   provider_options: z.record(z.string(), z.unknown()).default({}),
+  phases: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        instructions: z.string().optional(),
+        tools: z.array(z.string()).default([]),
+        until: z.object({
+          tool_called: z.string().optional(),
+          max_steps: z.number().int().positive().optional(),
+        }),
+      }),
+    )
+    .optional(),
 })
 
 export type ProfileFrontmatter = z.infer<typeof ProfileFrontmatterSchema>
+export type ProfilePhase = NonNullable<ProfileFrontmatter['phases']>[number]
 
 export interface AgentProfile extends ProfileFrontmatter {
   system: string
