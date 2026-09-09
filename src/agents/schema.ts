@@ -74,6 +74,26 @@ export const SecretsFileSchema = z.object({
   patterns: z.array(z.string()).default([]),
 })
 
+export const ScheduleSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+    cron: z.string().optional(),
+    at: z.number().int().positive().optional(),
+    timezone: z.string().default('UTC'),
+    agent: z.string(),
+    workspace: z.string(),
+    prompt: z.string().min(1),
+    mode: z.enum(['draft', 'normal']).default('draft'),
+    budget: z.object({ run_usd: z.number().nonnegative(), day_usd: z.number().nonnegative() }),
+    overlap: z.enum(['queue', 'skip']).default('skip'),
+    missed: z.enum(['skip', 'run_once']).default('skip'),
+    enabled: z.boolean().default(true),
+  })
+  .refine((s) => Boolean(s.cron) !== Boolean(s.at), { message: 'informe cron ou at, nunca ambos' })
+
+export type ScheduleInput = z.input<typeof ScheduleSchema>
+export type ScheduleParsed = z.infer<typeof ScheduleSchema>
+
 export const McpFileSchema = z.object({
   servers: z.record(z.string(), McpServerSchema).default({}),
 })

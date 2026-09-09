@@ -8,8 +8,44 @@ export interface SessionSummary {
   agent: string
   workspace: string
   title: string
+  origin: string
   createdAt: number
   updatedAt: number
+  costUsd: number
+}
+
+export interface ScheduleSpec {
+  id: string
+  cron?: string
+  at?: number
+  timezone: string
+  agent: string
+  workspace: string
+  prompt: string
+  mode: 'draft' | 'normal'
+  budget: { run_usd: number; day_usd: number }
+  overlap: 'queue' | 'skip'
+  missed: 'skip' | 'run_once'
+  enabled: boolean
+}
+
+export interface ScheduleStatus extends ScheduleSpec {
+  source: 'file' | 'db'
+  lastRunAt: number | null
+  nextRunAt: number | null
+  running: boolean
+  todayUsd: number
+}
+
+export interface AutomationRun {
+  id: string
+  kind: 'schedule' | 'trigger'
+  automationId: string
+  sessionId: string
+  runId: string
+  startedAt: number
+  finishedAt: number | null
+  status: string
   costUsd: number
 }
 
@@ -25,6 +61,13 @@ export type ClientFrame =
   | { type: 'agents.list' }
   | { type: 'cost.report'; group: 'agent' | 'model' | 'session' | 'day'; since?: number }
   | { type: 'sync'; session_id: string; since_seq: number }
+  | { type: 'schedule.list' }
+  | { type: 'schedule.upsert'; schedule: ScheduleSpec }
+  | { type: 'schedule.delete'; id: string }
+  | { type: 'schedule.run_now'; id: string }
+  | { type: 'automation.pause' }
+  | { type: 'automation.resume' }
+  | { type: 'automation.runs'; automation_id?: string; limit?: number }
 
 export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
@@ -42,6 +85,14 @@ export type ServerFrame =
   | { type: 'agents.list'; agents: AgentSummary[]; errors: { file: string; message: string }[] }
   | { type: 'cost.report'; rows: { key: string; costUsd: number; calls: number; input: number; output: number; cacheRead: number }[] }
   | { type: 'sync'; session_id: string; events: { seq: number; run_id: string; event: RunEvent }[] }
+  | { type: 'schedule.list'; schedules: ScheduleStatus[]; paused: boolean }
+  | { type: 'schedule.saved'; schedule: ScheduleStatus }
+  | { type: 'schedule.deleted'; id: string }
+  | { type: 'automation.state'; paused: boolean }
+  | { type: 'automation.started'; kind: 'schedule' | 'trigger'; id: string; session_id: string; run_id: string }
+  | { type: 'automation.finished'; kind: 'schedule' | 'trigger'; id: string; session_id: string; run_id: string; stop: string; cost_usd: number }
+  | { type: 'automation.error'; kind: 'schedule' | 'trigger'; id: string; message: string }
+  | { type: 'automation.runs'; runs: AutomationRun[] }
 
 export interface AgentSummary {
   name: string
