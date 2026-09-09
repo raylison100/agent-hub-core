@@ -27,6 +27,7 @@ export interface OpenAICompatibleOptions {
   apiKey: string
   baseURL?: string
   sendReasoningEffort?: boolean
+  reasoningEffortOverride?: string
   deepseekThinking?: boolean
   temperature?: number
   seed?: number
@@ -48,11 +49,13 @@ interface ToolCallAccumulator {
   args: string
 }
 
-const effortByReasoning: Record<Reasoning, 'low' | 'medium' | 'high'> = {
+type OpenAIEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
+const effortByReasoning: Record<Reasoning, OpenAIEffort> = {
   low: 'low',
   medium: 'medium',
   high: 'high',
-  max: 'high',
+  max: 'max',
 }
 
 const deepseekEffort: Record<Reasoning, 'low' | 'high' | 'max'> = {
@@ -132,7 +135,10 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       params.tools = req.tools.map(toTool)
       params.tool_choice = 'auto'
     }
-    if (this.opts.sendReasoningEffort) params.reasoning_effort = effortByReasoning[req.reasoning]
+    if (this.opts.sendReasoningEffort) {
+      const effort = this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]
+      params.reasoning_effort = effort as ChatParams['reasoning_effort']
+    }
     if (this.opts.temperature !== undefined) params.temperature = this.opts.temperature
     if (this.opts.seed !== undefined) params.seed = this.opts.seed
     return Object.assign(params, this.deepseekParams(req.reasoning), this.opts.extraBody ?? {})

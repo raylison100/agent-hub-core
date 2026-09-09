@@ -63,6 +63,7 @@ export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = pr
     apiKey,
     baseURL,
     sendReasoningEffort: profile.provider === 'openai',
+    reasoningEffortOverride: stringOpt(opts, 'reasoning_effort'),
     deepseekThinking: profile.provider === 'deepseek' && model.startsWith('deepseek-v4'),
     temperature: numberOpt(opts, 'temperature'),
     seed: numberOpt(opts, 'seed'),
