@@ -77,8 +77,9 @@ export type ClientFrame =
   | { type: 'session.create'; agent?: string; workspace: string; title?: string; text?: string }
   | { type: 'session.list'; limit?: number }
   | { type: 'session.get'; session_id: string }
-  | { type: 'run.start'; session_id: string; text: string; mode?: 'normal' | 'draft' | 'auto_approve' }
+  | { type: 'run.start'; session_id: string; text: string; mode?: 'normal' | 'draft' | 'auto_approve'; reasoning?: 'low' | 'medium' | 'high' | 'max' }
   | { type: 'cost.export'; since?: number; until?: number }
+  | { type: 'cost.status' }
   | { type: 'run.cancel'; run_id: string }
   | { type: 'approval.respond'; approval_id: string; decision: Exclude<Decision, 'ask'>; remember?: boolean }
   | { type: 'budget.override'; run_id: string; scope: 'run' | 'session' | 'agent' | 'global'; limit_usd: number }
@@ -123,6 +124,13 @@ export type ServerFrame =
   | { type: 'agents.list'; agents: AgentSummary[]; errors: { file: string; message: string }[] }
   | { type: 'cost.report'; rows: { key: string; costUsd: number; calls: number; input: number; output: number; cacheRead: number }[] }
   | { type: 'cost.export'; csv: string; rows: number }
+  | {
+      type: 'cost.status'
+      today_usd: number
+      month_usd: number
+      global_month_limit_usd: number | null
+      agents: Record<string, { today_usd: number; day_limit_usd: number | null }>
+    }
   | { type: 'sync'; session_id: string; events: { seq: number; run_id: string; event: RunEvent }[] }
   | { type: 'schedule.list'; schedules: ScheduleStatus[]; paused: boolean }
   | { type: 'schedule.saved'; schedule: ScheduleStatus }
@@ -154,5 +162,7 @@ export interface AgentSummary {
   model: string
   reasoning: string
   tools: string[]
-  budget: { run_usd?: number; session_usd?: number }
+  budget: { run_usd?: number; session_usd?: number; day_usd?: number }
+  context_window: number
+  delegates: string[]
 }
