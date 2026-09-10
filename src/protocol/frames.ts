@@ -4,6 +4,9 @@ import type { Decision, Message } from '../types.js'
 
 export const protocolVersion = 1
 
+/** Modos de um run: `normal` segue a politica do perfil; `accept_edits` libera escrita e pergunta execucao; `draft` so le; `auto_approve` libera tudo exceto padroes destrutivos. */
+export type RunMode = 'normal' | 'accept_edits' | 'draft' | 'auto_approve'
+
 export interface SessionSummary {
   id: string
   agent: string
@@ -82,7 +85,7 @@ export type ClientFrame =
   | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean }
   | { type: 'session.delete'; session_id: string }
   | { type: 'session.fork'; session_id: string }
-  | { type: 'run.start'; session_id: string; text: string; mode?: 'normal' | 'draft' | 'auto_approve'; reasoning?: 'low' | 'medium' | 'high' | 'max' }
+  | { type: 'run.start'; session_id: string; text: string; mode?: RunMode; reasoning?: 'low' | 'medium' | 'high' | 'max' }
   | { type: 'cost.export'; since?: number; until?: number }
   | { type: 'cost.status' }
   | { type: 'run.cancel'; run_id: string }
