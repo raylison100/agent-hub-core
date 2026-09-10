@@ -134,9 +134,9 @@ export type ClientFrame =
   | { type: 'secrets.list' }
   | { type: 'secrets.set'; name: string; value: string }
   | { type: 'secrets.delete'; name: string }
-  | { type: 'fs.list'; session_id: string; path?: string }
-  | { type: 'fs.read'; session_id: string; path: string; max_chars?: number }
-  | { type: 'fs.tree'; session_id: string; path?: string; depth?: number }
+  | { type: 'fs.list'; session_id?: string; workspace?: string; path?: string }
+  | { type: 'fs.read'; session_id?: string; workspace?: string; path: string; max_chars?: number }
+  | { type: 'fs.tree'; session_id?: string; workspace?: string; path?: string; depth?: number }
   | { type: 'skills.list'; agent?: string }
   | { type: 'skill.get'; name: string }
   | { type: 'plugins.list' }
