@@ -36,9 +36,9 @@ export function resolveModel(profile: Pick<AgentProfile, 'provider' | 'model' | 
 /** Cria o adaptador de provedor para um perfil, lendo a chave do ambiente. */
 export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = process.env): ProviderAdapter {
   const opts = profile.provider_options
-  const keyEnv = stringOpt(opts, 'api_key_env') ?? defaultKeyEnv[profile.provider] ?? ''
+  const keyEnv = stringOpt(opts, 'api_key_env', env) ?? defaultKeyEnv[profile.provider] ?? ''
   const apiKey = env[keyEnv]
-  const baseURL = stringOpt(opts, 'base_url') ?? defaultBaseUrl[profile.provider]
+  const baseURL = stringOpt(opts, 'base_url', env) ?? defaultBaseUrl[profile.provider]
   const model = resolveModel(profile)
 
   if (profile.provider === 'anthropic') {
@@ -70,9 +70,11 @@ export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = pr
   })
 }
 
-function stringOpt(opts: Record<string, unknown>, key: string): string | undefined {
+/** Le uma opcao de texto expandindo `${VAR}` e `$VAR` do ambiente, para hosts que mudam, como o gateway do WSL. */
+function stringOpt(opts: Record<string, unknown>, key: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
   const v = opts[key]
-  return typeof v === 'string' ? v : undefined
+  if (typeof v !== 'string') return undefined
+  return v.replace(/\$\{?([A-Z0-9_]+)\}?/g, (match, name: string) => env[name] ?? match)
 }
 
 function numberOpt(opts: Record<string, unknown>, key: string): number | undefined {
