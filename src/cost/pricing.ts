@@ -43,6 +43,13 @@ export class Pricing {
     return this.table.version
   }
 
+  /** Idade da tabela em dias, quando `version` e uma data ISO; null quando nao da para saber. */
+  ageDays(now: Date = new Date()): number | null {
+    const parsed = Date.parse(this.table.version)
+    if (Number.isNaN(parsed)) return null
+    return Math.floor((now.getTime() - parsed) / 86_400_000)
+  }
+
   /** Encontra o preco de um modelo, aceitando curinga `provider/*`. */
   resolve(provider: string, model: string): ModelPrice {
     const key = `${provider}/${model}`

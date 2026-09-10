@@ -78,3 +78,14 @@ describe('desconto fora de pico', () => {
     expect(pricing.multiplierAt('anthropic', 'claude-opus-5', segundaForaDePico)).toBe(1)
   })
 })
+
+describe('ageDays', () => {
+  it('conta a idade da tabela a partir da version em data ISO', () => {
+    const p = new Pricing({ version: '2026-09-01', models: {} })
+    expect(p.ageDays(new Date('2026-09-10T12:00:00Z'))).toBe(9)
+  })
+
+  it('devolve null quando version nao e data', () => {
+    expect(new Pricing({ version: 'v3', models: {} }).ageDays()).toBeNull()
+  })
+})
