@@ -15,6 +15,7 @@ export interface SessionSummary {
   origin: string
   pinned: boolean
   archived: boolean
+  mode: RunMode
   createdAt: number
   updatedAt: number
   costUsd: number
@@ -97,7 +98,7 @@ export type ClientFrame =
   | { type: 'session.create'; agent?: string; workspace: string; title?: string; text?: string }
   | { type: 'session.list'; limit?: number; include_archived?: boolean }
   | { type: 'session.get'; session_id: string }
-  | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean; agent?: string }
+  | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean; agent?: string; mode?: RunMode }
   | { type: 'session.delete'; session_id: string }
   | { type: 'session.fork'; session_id: string }
   | { type: 'run.start'; session_id: string; text: string; mode?: RunMode; reasoning?: 'low' | 'medium' | 'high' | 'max'; agent?: string; improve?: boolean }

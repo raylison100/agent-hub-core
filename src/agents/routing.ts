@@ -26,6 +26,7 @@ export const PromptImproverSchema = z.object({
   agent: z.string(),
   min_chars: z.number().int().nonnegative().default(12),
   max_output: z.number().int().positive().default(1200),
+  timeout_ms: z.number().int().positive().default(60000),
 })
 
 export const RoutingFileSchema = z.union([
@@ -58,9 +59,10 @@ export interface Routing {
 export function improverPrompt(original: string, targetAgent: string, targetDescription: string): string {
   return [
     `Reescreva o pedido abaixo como um prompt claro para o agente "${targetAgent}" (${targetDescription}).`,
-    'Regras: mantenha a intencao e todos os fatos do original; nao invente requisitos, caminhos nem nomes; deixe explicito o objetivo,',
-    'o contexto necessario, o criterio de pronto e as restricoes; escreva em portugues, direto, sem saudacao. Se o pedido ja estiver',
-    'claro, devolva-o quase igual. Responda apenas com o prompt reescrito.',
+    'Regras: mantenha a intencao e todos os fatos do original; nao invente requisitos, caminhos, nomes nem contexto de negocio;',
+    'se o original nao disser onde ou por que sera usado, nao crie essa informacao. Deixe explicito o objetivo, o criterio de pronto',
+    'e as restricoes que o original ja contem ou que sejam consequencia tecnica direta dele. Escreva em portugues, direto, sem saudacao.',
+    'Se o pedido ja estiver claro, devolva-o quase igual. Responda apenas com o prompt reescrito.',
     '',
     'Pedido original:',
     original,
