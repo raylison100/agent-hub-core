@@ -79,6 +79,19 @@ export interface AutomationRun {
   costUsd: number
 }
 
+export interface BackgroundTask {
+  task_id: string
+  run_id: string
+  session_id: string
+  session_title: string
+  agent: string
+  task: string
+  status: 'rodando' | 'pronto' | 'erro'
+  cost_usd: number
+  collected: boolean
+  started_at: number
+}
+
 export interface StatsOverview {
   user: string
   sessions: number
@@ -165,6 +178,11 @@ export type ClientFrame =
   | { type: 'feedback.list'; session_id: string }
   | { type: 'feedback.summary' }
   | { type: 'stats.overview'; days?: number }
+  | { type: 'term.open'; session_id: string; cols: number; rows: number; term_id?: string }
+  | { type: 'term.input'; term_id: string; data: string }
+  | { type: 'term.resize'; term_id: string; cols: number; rows: number }
+  | { type: 'term.close'; term_id: string }
+  | { type: 'tasks.list'; session_id?: string }
 
 export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
@@ -185,6 +203,10 @@ export type ServerFrame =
   | { type: 'feedback.list'; session_id: string; items: { run_id: string; verdict: 'good' | 'bad' }[] }
   | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
   | { type: 'stats.overview'; stats: StatsOverview }
+  | { type: 'term.opened'; term_id: string; session_id: string; cwd: string; buffer: string }
+  | { type: 'term.data'; term_id: string; data: string }
+  | { type: 'term.exit'; term_id: string; code: number }
+  | { type: 'tasks.list'; tasks: BackgroundTask[] }
   | { type: 'event'; session_id: string; run_id: string; seq: number; event: RunEvent }
   | { type: 'approval.required'; approval_id: string; session_id: string; run_id: string; tool: string; args: unknown; risk: string; expires_at: number }
   | { type: 'approval.resolved'; approval_id: string; decision: string }
