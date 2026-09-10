@@ -36,6 +36,12 @@ export const ProfileFrontmatterSchema = z.object({
     })
     .default({ system_ttl: '5m' }),
   provider_options: z.record(z.string(), z.unknown()).default({}),
+  routing: z
+    .object({
+      capabilities: z.record(z.string(), z.number().min(0).max(1)).default({}),
+      max_prompt_tokens: z.number().int().positive().optional(),
+    })
+    .default({ capabilities: {} }),
   sandbox: z
     .object({
       image: z.string().min(1),

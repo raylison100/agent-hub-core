@@ -6,6 +6,7 @@ import { Budget, BudgetExceededError, type BudgetWarning } from '../cost/budget.
 import type { Ledger } from '../cost/ledger.js'
 import type { Pricing } from '../cost/pricing.js'
 import type { HookContext, HookRunner } from '../hooks/runner.js'
+import type { ScoredAgent } from '../agents/scoring.js'
 import { decide } from '../tools/policy.js'
 import type { SandboxOptions, ToolRegistry } from '../tools/registry.js'
 import { validateCall } from '../tools/validate.js'
@@ -32,6 +33,8 @@ export type RunStop =
   | 'cancelled'
   | 'error'
 
+export type RoutedBy = 'rule' | 'classifier' | 'score' | 'default' | 'fixed' | 'override'
+
 export type RunEvent =
   | { type: 'text_delta'; delta: string }
   | { type: 'reasoning_delta'; delta: string }
@@ -56,7 +59,7 @@ export type RunEvent =
     }
   | { type: 'hook'; event: string; tool?: string; allow: boolean; reason?: string }
   | { type: 'phase'; index: number; name: string; tools: string[] }
-  | { type: 'routed'; agent: string; model: string; by: 'rule' | 'classifier' | 'default' | 'fixed' | 'override'; intent: string | null; reason: string }
+  | { type: 'routed'; agent: string; model: string; by: RoutedBy; intent: string | null; reason: string; ranking?: ScoredAgent[] }
   | { type: 'prompt_improved'; by: string; original: string; improved: string; costUsd: number }
   | { type: 'run_finished'; stop: RunStop; steps: number; costUsd: number; error?: string }
 

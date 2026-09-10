@@ -35,6 +35,12 @@ export function resolveModel(profile: Pick<AgentProfile, 'provider' | 'model' | 
   return deep && high ? 'deepseek-reasoner' : profile.model
 }
 
+/** Nome da variavel com a chave do provedor do perfil; Ollama dispensa chave e devolve null. */
+export function apiKeyEnv(profile: Pick<AgentProfile, 'provider' | 'provider_options'>, env: NodeJS.ProcessEnv = process.env): string | null {
+  if (profile.provider === 'ollama') return null
+  return stringOpt(profile.provider_options, 'api_key_env', env) ?? defaultKeyEnv[profile.provider] ?? null
+}
+
 /** Cria o adaptador de provedor para um perfil, lendo a chave do ambiente. */
 export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = process.env): ProviderAdapter {
   const opts = profile.provider_options
