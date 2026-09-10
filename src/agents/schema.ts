@@ -97,6 +97,7 @@ export const McpServerSchema = z
     url: z.string().url().optional(),
     headers: z.record(z.string(), z.string()).default({}),
     risk: z.record(z.string(), z.enum(['read', 'write', 'exec'])).default({ '*': 'write' }),
+    enabled: z.boolean().default(true),
   })
   .refine((s) => Boolean(s.command) !== Boolean(s.url), { message: 'informe command (stdio) ou url (http), nunca ambos' })
 

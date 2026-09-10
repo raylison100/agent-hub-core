@@ -130,6 +130,11 @@ export type ClientFrame =
   | { type: 'trigger.upsert'; trigger: TriggerSpec }
   | { type: 'trigger.delete'; id: string }
   | { type: 'mcp.servers' }
+  | { type: 'mcp.add'; text: string }
+  | { type: 'mcp.remove'; name: string }
+  | { type: 'mcp.toggle'; name: string; enabled: boolean }
+  | { type: 'mcp.import'; source: 'claude-code' }
+  | { type: 'mcp.connect'; name: string }
   | { type: 'mcp.resources'; server: string }
   | { type: 'mcp.resource.read'; server: string; uri: string }
   | { type: 'mcp.prompts'; server: string }
@@ -197,7 +202,11 @@ export type ServerFrame =
   | { type: 'automation.finished'; kind: 'schedule' | 'trigger'; id: string; session_id: string; run_id: string; stop: string; cost_usd: number }
   | { type: 'automation.error'; kind: 'schedule' | 'trigger'; id: string; message: string }
   | { type: 'automation.runs'; runs: AutomationRun[] }
-  | { type: 'mcp.servers'; servers: { name: string; connected: boolean; transport: 'stdio' | 'http' }[] }
+  | {
+      type: 'mcp.servers'
+      servers: { name: string; connected: boolean; enabled: boolean; transport: 'stdio' | 'http'; command: string; args: string[]; url: string | null; tools: number; error: string | null }[]
+    }
+  | { type: 'mcp.saved'; added: string[]; secrets: string[] }
   | { type: 'mcp.resources'; server: string; resources: { uri: string; name?: string; description?: string; mimeType?: string }[] }
   | { type: 'mcp.resource.read'; server: string; uri: string; text: string }
   | { type: 'mcp.prompts'; server: string; prompts: { name: string; description?: string; arguments?: { name: string; required?: boolean }[] }[] }
