@@ -29,7 +29,7 @@ export function gitPluginDir(base: string, gitUrl: string): string {
 }
 
 export const ProfileOverrideSchema = z.object({
-  provider: z.enum(['anthropic', 'deepseek', 'openai', 'ollama']),
+  provider: z.enum(['anthropic', 'deepseek', 'openai', 'gemini', 'ollama']),
   model: z.string(),
   reasoning: z.enum(['low', 'medium', 'high', 'max']).optional(),
   context: z.object({ window: z.number().int().positive(), compact_at: z.number().optional(), summarizer: z.string().optional() }),

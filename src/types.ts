@@ -1,6 +1,6 @@
 export type Risk = 'read' | 'write' | 'exec'
 export type Reasoning = 'low' | 'medium' | 'high' | 'max'
-export type ProviderId = 'anthropic' | 'deepseek' | 'openai' | 'ollama'
+export type ProviderId = 'anthropic' | 'deepseek' | 'openai' | 'gemini' | 'ollama'
 export type Decision = 'allow' | 'ask' | 'deny'
 
 export interface Usage {

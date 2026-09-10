@@ -8,6 +8,7 @@ export { OpenAICompatibleAdapter, mapOpenAICompatibleUsage } from './openai-comp
 
 const defaultBaseUrl: Record<string, string | undefined> = {
   deepseek: 'https://api.deepseek.com',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/',
   ollama: 'http://127.0.0.1:11434/v1',
   openai: undefined,
   anthropic: undefined,
@@ -17,6 +18,7 @@ const defaultKeyEnv: Record<string, string> = {
   anthropic: 'ANTHROPIC_API_KEY',
   deepseek: 'DEEPSEEK_API_KEY',
   openai: 'OPENAI_API_KEY',
+  gemini: 'GEMINI_API_KEY',
   ollama: 'OLLAMA_API_KEY',
 }
 
@@ -62,7 +64,8 @@ export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = pr
     model,
     apiKey,
     baseURL,
-    sendReasoningEffort: profile.provider === 'openai',
+    sendReasoningEffort: profile.provider === 'openai' || profile.provider === 'gemini',
+    effortCap: profile.provider === 'gemini' ? 'high' : undefined,
     reasoningEffortOverride: stringOpt(opts, 'reasoning_effort'),
     deepseekThinking: profile.provider === 'deepseek' && model.startsWith('deepseek-v4'),
     temperature: numberOpt(opts, 'temperature'),

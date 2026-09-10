@@ -28,6 +28,7 @@ export interface OpenAICompatibleOptions {
   baseURL?: string
   sendReasoningEffort?: boolean
   reasoningEffortOverride?: string
+  effortCap?: 'high'
   deepseekThinking?: boolean
   temperature?: number
   seed?: number
@@ -136,7 +137,8 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       params.tool_choice = 'auto'
     }
     if (this.opts.sendReasoningEffort) {
-      const effort = this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]
+      let effort = this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]
+      if (this.opts.effortCap === 'high' && (effort === 'xhigh' || effort === 'max')) effort = 'high'
       params.reasoning_effort = effort as ChatParams['reasoning_effort']
     }
     if (this.opts.temperature !== undefined) params.temperature = this.opts.temperature

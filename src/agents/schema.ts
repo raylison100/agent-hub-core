@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const ProfileFrontmatterSchema = z.object({
   name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
   description: z.string().min(1),
-  provider: z.enum(['anthropic', 'deepseek', 'openai', 'ollama']),
+  provider: z.enum(['anthropic', 'deepseek', 'openai', 'gemini', 'ollama']),
   model: z.string().min(1),
   reasoning: z.enum(['low', 'medium', 'high', 'max']).default('medium'),
   max_output: z.number().int().positive().default(8000),
