@@ -21,23 +21,47 @@ export const ClassifierSchema = z.object({
   max_prompt_chars: z.number().int().positive().default(2000),
 })
 
+export const PromptImproverSchema = z.object({
+  agent: z.string(),
+  min_chars: z.number().int().nonnegative().default(12),
+  max_output: z.number().int().positive().default(1200),
+})
+
 export const RoutingFileSchema = z.union([
   z.array(RuleSchema),
   z.object({
     intents: z.record(z.string(), z.array(z.string())).default({}),
     rules: z.array(RuleSchema).default([]),
     classifier: ClassifierSchema.optional(),
+    default_agent: z.string().optional(),
+    prompt_improver: PromptImproverSchema.optional(),
   }),
 ])
 
 export type RuleWhen = z.infer<typeof RuleWhenSchema>
 export type Rule = z.infer<typeof RuleSchema>
 export type Classifier = z.infer<typeof ClassifierSchema>
+export type PromptImprover = z.infer<typeof PromptImproverSchema>
 
 export interface Routing {
   intents: Record<string, string[]>
   rules: Rule[]
   classifier?: Classifier
+  default_agent?: string
+  prompt_improver?: PromptImprover
+}
+
+/** Prompt para o reescritor: melhora o pedido do usuario para o agente alvo sem inventar fatos. */
+export function improverPrompt(original: string, targetAgent: string, targetDescription: string): string {
+  return [
+    `Reescreva o pedido abaixo como um prompt claro para o agente "${targetAgent}" (${targetDescription}).`,
+    'Regras: mantenha a intencao e todos os fatos do original; nao invente requisitos, caminhos nem nomes; deixe explicito o objetivo,',
+    'o contexto necessario, o criterio de pronto e as restricoes; escreva em portugues, direto, sem saudacao. Se o pedido ja estiver',
+    'claro, devolva-o quase igual. Responda apenas com o prompt reescrito.',
+    '',
+    'Pedido original:',
+    original,
+  ].join('\n')
 }
 
 export interface RouteContext {
