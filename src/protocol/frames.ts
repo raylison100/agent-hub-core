@@ -77,6 +77,21 @@ export interface AutomationRun {
   costUsd: number
 }
 
+export interface StatsOverview {
+  user: string
+  sessions: number
+  messages: number
+  total_tokens: number
+  active_days: number
+  current_streak_days: number
+  longest_streak_days: number
+  peak_hour: number | null
+  favorite_model: string | null
+  cost_usd: number
+  days: { date: string; count: number }[]
+  models: { model: string; calls: number; tokens: number; cost_usd: number }[]
+}
+
 export type ClientFrame =
   | { type: 'auth'; token: string; protocol_version: number; client: string }
   | { type: 'session.create'; agent?: string; workspace: string; title?: string; text?: string }
@@ -125,6 +140,10 @@ export type ClientFrame =
   | { type: 'skill.get'; name: string }
   | { type: 'plugins.list' }
   | { type: 'routing.info' }
+  | { type: 'feedback.set'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
+  | { type: 'feedback.list'; session_id: string }
+  | { type: 'feedback.summary' }
+  | { type: 'stats.overview'; days?: number }
 
 export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
@@ -138,6 +157,10 @@ export type ServerFrame =
   | { type: 'session.deleted'; session_id: string }
   | { type: 'run.started'; run_id: string; session_id: string }
   | { type: 'routing.info'; default_agent: string | null; improver: string | null; classifier: string | null }
+  | { type: 'feedback.ok'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
+  | { type: 'feedback.list'; session_id: string; items: { run_id: string; verdict: 'good' | 'bad' }[] }
+  | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
+  | { type: 'stats.overview'; stats: StatsOverview }
   | { type: 'event'; session_id: string; run_id: string; seq: number; event: RunEvent }
   | { type: 'approval.required'; approval_id: string; session_id: string; run_id: string; tool: string; args: unknown; risk: string; expires_at: number }
   | { type: 'approval.resolved'; approval_id: string; decision: string }

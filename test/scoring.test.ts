@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ScoringSchema, blendedCost, scoreAgents, type ScoreCandidate } from '../src/agents/scoring.js'
+import { ScoringSchema, blendedCost, feedbackDelta, scoreAgents, type ScoreCandidate } from '../src/agents/scoring.js'
 import type { ModelPrice } from '../src/cost/pricing.js'
 
 const prices: Record<string, ModelPrice> = {
@@ -23,6 +23,16 @@ describe('blendedCost', () => {
   })
   it('devolve null quando falta preco', () => {
     expect(blendedCost({ input: 10, output: null })).toBeNull()
+  })
+})
+
+describe('feedbackDelta', () => {
+  const cfg = ScoringSchema.parse({}).feedback
+  it('soma bons e ruins com pesos e limita a faixa', () => {
+    expect(feedbackDelta(3, 0, cfg)).toBe(0.06)
+    expect(feedbackDelta(0, 2, cfg)).toBe(-0.1)
+    expect(feedbackDelta(50, 0, cfg)).toBe(0.2)
+    expect(feedbackDelta(0, 50, cfg)).toBe(-0.2)
   })
 })
 
@@ -87,6 +97,19 @@ describe('scoreAgents', () => {
       { intent: null, promptTokens: 100 },
     )
     expect(r.ranking.map((x) => x.agent)).toEqual(['a', 'b'])
+  })
+
+  it('ajuste aprendido muda o vencedor e fica limitado a 0..1', () => {
+    const r = scoreAgents(base, priceOf, scoring, {
+      intent: 'implementar',
+      promptTokens: 100,
+      adjustments: { barato: -0.2, caro: 0.1 },
+    })
+    expect(r.ranking.find((x) => x.agent === 'barato')?.capability).toBeCloseTo(0.6)
+    expect(r.ranking.find((x) => x.agent === 'caro')?.capability).toBeCloseTo(0.95)
+    expect(r.chosen?.agent).toBe('barato')
+    const capped = scoreAgents(base, priceOf, scoring, { intent: 'implementar', promptTokens: 100, adjustments: { caro: 0.5 } })
+    expect(capped.ranking.find((x) => x.agent === 'caro')?.capability).toBe(1)
   })
 
   it('respeita a lista exclude do routing.json', () => {

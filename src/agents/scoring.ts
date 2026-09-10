@@ -6,6 +6,13 @@ export const ScoringSchema = z.object({
   min_capability: z.number().min(0).max(1).default(0.5),
   context_margin: z.number().min(1).default(1.5),
   exclude: z.array(z.string()).default([]),
+  feedback: z
+    .object({
+      good: z.number().min(0).default(0.02),
+      bad: z.number().min(0).default(0.05),
+      limit: z.number().min(0).max(0.5).default(0.2),
+    })
+    .default({ good: 0.02, bad: 0.05, limit: 0.2 }),
 })
 
 export type Scoring = z.infer<typeof ScoringSchema>
@@ -24,12 +31,14 @@ export interface ScoreInput {
   intent: string | null
   promptTokens: number
   unavailable?: (name: string) => string | null
+  adjustments?: Record<string, number>
 }
 
 export interface ScoredAgent {
   agent: string
   score: number
   capability: number
+  adjustment: number
   costPerMillion: number
   excluded?: string
 }
@@ -40,6 +49,12 @@ export interface ScoreResult {
 }
 
 const inputShare = 0.7
+
+/** Converte contagens de feedback bom e ruim no ajuste de capacidade, limitado para nenhum agente fugir da faixa aprendivel. */
+export function feedbackDelta(good: number, bad: number, cfg: Scoring['feedback']): number {
+  const raw = good * cfg.good - bad * cfg.bad
+  return Math.round(Math.max(-cfg.limit, Math.min(cfg.limit, raw)) * 10000) / 10000
+}
 
 /** Custo por milhao de tokens ponderado em 70% entrada e 30% saida, o perfil tipico de um run com ferramentas. */
 export function blendedCost(price: ModelPrice): number | null {
@@ -72,10 +87,12 @@ function evaluate(
   scoring: Scoring,
   input: ScoreInput,
 ): ScoredAgent {
-  const capability = c.capabilities[input.intent ?? '*'] ?? c.capabilities['*']
+  const declared = c.capabilities[input.intent ?? '*'] ?? c.capabilities['*']
+  const adjustment = input.adjustments?.[c.name] ?? 0
+  const capability = declared === undefined ? undefined : Math.max(0, Math.min(1, declared + adjustment))
   const price = priceOf(c.provider, c.model)
   const cost = price ? blendedCost(price) : null
-  const row: ScoredAgent = { agent: c.name, score: 0, capability: capability ?? 0, costPerMillion: cost ?? 0 }
+  const row: ScoredAgent = { agent: c.name, score: 0, capability: capability ?? 0, adjustment, costPerMillion: cost ?? 0 }
   row.excluded = exclusionReason(c, capability, cost, scoring, input)
   if (row.excluded === undefined) delete row.excluded
   return row

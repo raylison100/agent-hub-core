@@ -41,6 +41,7 @@ export interface Message {
   raw?: unknown
   rawProvider?: string
   kind?: 'compaction'
+  runId?: string
 }
 
 export type JsonSchema = Record<string, unknown>

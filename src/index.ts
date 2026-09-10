@@ -64,7 +64,7 @@ export {
   type RouteContext,
   type RouteResult,
 } from './agents/routing.js'
-export { ScoringSchema, blendedCost, scoreAgents, type ScoreCandidate, type ScoreInput, type ScoreResult, type ScoredAgent, type Scoring } from './agents/scoring.js'
+export { ScoringSchema, blendedCost, feedbackDelta, scoreAgents, type ScoreCandidate, type ScoreInput, type ScoreResult, type ScoredAgent, type Scoring } from './agents/scoring.js'
 export {
   AgentRunner,
   budgetFor,
