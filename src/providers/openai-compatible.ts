@@ -118,7 +118,8 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       for (const tc of delta.tool_calls ?? []) accumulateToolCall(calls, tc)
       if (choice.finish_reason) finish = choice.finish_reason
     }
-    const message = buildAssistant(text.join(''), calls, reasoning.join(''))
+    const split = splitThink(text.join(''))
+    const message = buildAssistant(split.text, calls, reasoning.join('') + split.think)
     return {
       message,
       toolCalls: message.parts.filter((p): p is ToolCallPart => p.type === 'tool_call'),
@@ -220,6 +221,16 @@ function buildAssistant(text: string, calls: Map<number, ToolCallAccumulator>, r
     message.rawProvider = 'openai-compatible'
   }
   return message
+}
+
+/** Modelos locais como o Qwen3 podem devolver o raciocinio inline em `<think>`; separa para nao poluir a resposta. */
+function splitThink(text: string): { text: string; think: string } {
+  const parts: string[] = []
+  const clean = text.replace(/<think>([\s\S]*?)<\/think>\s*/g, (_, inner: string) => {
+    parts.push(inner.trim())
+    return ''
+  })
+  return { text: clean, think: parts.join('\n') }
 }
 
 function parseArgs(raw: string): unknown {

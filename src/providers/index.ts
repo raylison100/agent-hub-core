@@ -56,6 +56,7 @@ export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = pr
       sendReasoningEffort: false,
       temperature: numberOpt(opts, 'temperature'),
       seed: numberOpt(opts, 'seed'),
+      extraBody: recordOpt(opts, 'extra_body'),
     })
   }
   if (!apiKey) throw new MissingApiKeyError(keyEnv, profile.provider)
@@ -72,7 +73,13 @@ export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = pr
     deepseekThinking: profile.provider === 'deepseek' && model.startsWith('deepseek-v4'),
     temperature: numberOpt(opts, 'temperature'),
     seed: numberOpt(opts, 'seed'),
+    extraBody: recordOpt(opts, 'extra_body'),
   })
+}
+
+function recordOpt(opts: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+  const v = opts[key]
+  return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined
 }
 
 /** Le uma opcao de texto expandindo `${VAR}` e `$VAR` do ambiente, para hosts que mudam, como o gateway do WSL. */
