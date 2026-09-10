@@ -184,6 +184,17 @@ export function toInput(messages: Message[]): InputItem[] {
   return items
 }
 
+/** Texto simples quando nao ha imagem; com imagem, a lista de conteudos de entrada da Responses API. */
+function toUserContent(m: Message): string | OpenAI.Responses.ResponseInputMessageContentList {
+  const images = m.parts.filter((p): p is Extract<Part, { type: 'image' }> => p.type === 'image')
+  const text = m.parts.map(partText).filter(Boolean).join('\n')
+  if (images.length === 0) return text
+  const content: OpenAI.Responses.ResponseInputMessageContentList = []
+  if (text) content.push({ type: 'input_text', text })
+  for (const img of images) content.push({ type: 'input_image', image_url: `data:${img.mediaType};base64,${img.data}`, detail: 'auto' })
+  return content
+}
+
 function toTool(t: ToolDefinition): OpenAI.Responses.Tool {
   return { type: 'function', name: t.name, description: t.description, parameters: t.inputSchema, strict: false }
 }

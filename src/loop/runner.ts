@@ -14,6 +14,7 @@ import type {
   ChatResult,
   Decision,
   Message,
+  ImageInput,
   Part,
   Policy,
   ProviderAdapter,
@@ -111,6 +112,7 @@ export interface RunInput {
   sessionId: string
   history: Message[]
   userText: string
+  images?: ImageInput[]
   parentRunId?: string
 }
 
@@ -219,7 +221,7 @@ export class AgentRunner {
     const baseSystem = this.systemPrompt()
     const allTools = this.toolDefinitions()
     this.announcePhase(allTools)
-    const userMessage = this.userMessage(input.userText)
+    const userMessage = this.userMessage(input.userText, input.images)
     let appended: Message[] = [userMessage]
     let messages = [...input.history, userMessage]
     let invalid = 0
@@ -501,8 +503,9 @@ export class AgentRunner {
     return skill.body
   }
 
-  private userMessage(text: string): Message {
+  private userMessage(text: string, images: ImageInput[] = []): Message {
     const parts: Part[] = [{ type: 'text', text }]
+    for (const img of images) parts.push({ type: 'image', mediaType: img.mediaType, data: img.data, name: img.name })
     const preload = this.deps.preloadSkills ?? []
     for (const s of preload) parts.push({ type: 'text', text: `Instrucoes da skill ${s.name}, ativada por regra:\n\n${s.body}` })
     if (preload.length > 0) this.deps.emit({ type: 'skills_loaded', names: preload.map((s) => s.name) })

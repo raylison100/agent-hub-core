@@ -40,8 +40,9 @@ export const ProfileFrontmatterSchema = z.object({
     .object({
       capabilities: z.record(z.string(), z.number().min(0).max(1)).default({}),
       max_prompt_tokens: z.number().int().positive().optional(),
+      vision: z.boolean().default(false),
     })
-    .default({ capabilities: {} }),
+    .default({ capabilities: {}, vision: false }),
   sandbox: z
     .object({
       image: z.string().min(1),

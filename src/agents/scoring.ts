@@ -25,11 +25,13 @@ export interface ScoreCandidate {
   maxPromptTokens?: number
   contextWindow: number
   maxOutput: number
+  vision?: boolean
 }
 
 export interface ScoreInput {
   intent: string | null
   promptTokens: number
+  needsVision?: boolean
   unavailable?: (name: string) => string | null
   adjustments?: Record<string, number>
 }
@@ -106,6 +108,7 @@ function exclusionReason(
   input: ScoreInput,
 ): string | undefined {
   if (scoring.exclude.includes(c.name)) return 'excluido em routing.json'
+  if (input.needsVision && !c.vision) return 'nao le imagens'
   const unavailable = input.unavailable?.(c.name)
   if (unavailable) return unavailable
   if (capability === undefined) return `sem capacidade declarada para ${input.intent ?? 'intencao desconhecida'}`

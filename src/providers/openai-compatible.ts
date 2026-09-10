@@ -256,7 +256,18 @@ function toMessages(messages: Message[]): ChatMessage[] {
 function toChatMessages(m: Message): ChatMessage[] {
   if (m.role === 'assistant') return [toAssistantMessage(m)]
   if (m.role === 'tool') return m.parts.filter(isToolResult).map(toToolMessage)
-  return [{ role: 'user', content: m.parts.map(partText).join('\n') }]
+  return [{ role: 'user', content: toUserContent(m) }]
+}
+
+/** Texto puro quando nao ha imagem; com imagem, as partes de conteudo que os provedores compativeis com OpenAI esperam. */
+function toUserContent(m: Message): string | OpenAI.Chat.Completions.ChatCompletionContentPart[] {
+  const images = m.parts.filter((p): p is Extract<Part, { type: 'image' }> => p.type === 'image')
+  const text = m.parts.map(partText).filter(Boolean).join('\n')
+  if (images.length === 0) return text
+  const parts: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []
+  if (text) parts.push({ type: 'text', text })
+  for (const img of images) parts.push({ type: 'image_url', image_url: { url: `data:${img.mediaType};base64,${img.data}` } })
+  return parts
 }
 
 function toAssistantMessage(m: Message): ChatMessage {

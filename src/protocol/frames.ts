@@ -101,7 +101,16 @@ export type ClientFrame =
   | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean; agent?: string; mode?: RunMode }
   | { type: 'session.delete'; session_id: string }
   | { type: 'session.fork'; session_id: string }
-  | { type: 'run.start'; session_id: string; text: string; mode?: RunMode; reasoning?: 'low' | 'medium' | 'high' | 'max'; agent?: string; improve?: boolean }
+  | {
+      type: 'run.start'
+      session_id: string
+      text: string
+      mode?: RunMode
+      reasoning?: 'low' | 'medium' | 'high' | 'max'
+      agent?: string
+      improve?: boolean
+      images?: { media_type: string; data: string; name?: string }[]
+    }
   | { type: 'cost.export'; since?: number; until?: number }
   | { type: 'cost.status' }
   | { type: 'run.cancel'; run_id: string }

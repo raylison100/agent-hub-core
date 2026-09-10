@@ -147,6 +147,7 @@ function toAssistantBlock(p: Part): Anthropic.ContentBlockParam | null {
 
 function toUserBlock(p: Part): Anthropic.ContentBlockParam | null {
   if (p.type === 'text') return { type: 'text', text: p.text }
+  if (p.type === 'image') return { type: 'image', source: { type: 'base64', media_type: p.mediaType as 'image/png', data: p.data } }
   if (p.type === 'tool_result') return toToolResultBlock(p)
   return null
 }

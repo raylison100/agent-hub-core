@@ -33,7 +33,14 @@ export interface ToolResultPart {
   isError: boolean
 }
 
-export type Part = TextPart | ToolCallPart | ToolResultPart
+export interface ImagePart {
+  type: 'image'
+  mediaType: string
+  data: string
+  name?: string
+}
+
+export type Part = TextPart | ImagePart | ToolCallPart | ToolResultPart
 
 export interface Message {
   role: 'user' | 'assistant' | 'tool'
@@ -78,6 +85,12 @@ export interface ChatResult {
   usage: Usage
   model: string
   latencyMs: number
+}
+
+export interface ImageInput {
+  mediaType: string
+  data: string
+  name?: string
 }
 
 export interface Capabilities {
