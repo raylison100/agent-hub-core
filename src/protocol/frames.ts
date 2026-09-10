@@ -118,6 +118,12 @@ export type ClientFrame =
   | { type: 'secrets.list' }
   | { type: 'secrets.set'; name: string; value: string }
   | { type: 'secrets.delete'; name: string }
+  | { type: 'fs.list'; session_id: string; path?: string }
+  | { type: 'fs.read'; session_id: string; path: string; max_chars?: number }
+  | { type: 'fs.tree'; session_id: string; path?: string; depth?: number }
+  | { type: 'skills.list'; agent?: string }
+  | { type: 'skill.get'; name: string }
+  | { type: 'plugins.list' }
 
 export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string }
@@ -162,6 +168,12 @@ export type ServerFrame =
   | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry'; ms?: number; cost_usd?: number; detail?: string }
   | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded'; cost_usd: number; outputs: Record<string, unknown>; error?: string }
   | { type: 'secrets.list'; secrets: { name: string; hint: string; length: number; updated_at: number; source: 'db' | 'env' }[] }
+  | { type: 'fs.list'; path: string; entries: { name: string; dir: boolean }[] }
+  | { type: 'fs.read'; path: string; text: string; truncated: boolean }
+  | { type: 'fs.tree'; path: string; text: string }
+  | { type: 'skills.list'; skills: { name: string; description: string; source: string }[] }
+  | { type: 'skill.get'; name: string; body: string }
+  | { type: 'plugins.list'; plugins: { name: string; dir: string; skills: number; agents: number; mcp: number; hooks: number }[] }
   | { type: 'push.vapid'; public_key: string; subscriptions: number }
   | { type: 'push.subscribed'; endpoint: string }
   | { type: 'trigger.list'; triggers: TriggerStatus[] }
