@@ -10,6 +10,8 @@ export interface SessionSummary {
   workspace: string
   title: string
   origin: string
+  pinned: boolean
+  archived: boolean
   createdAt: number
   updatedAt: number
   costUsd: number
@@ -75,8 +77,11 @@ export interface AutomationRun {
 export type ClientFrame =
   | { type: 'auth'; token: string; protocol_version: number; client: string }
   | { type: 'session.create'; agent?: string; workspace: string; title?: string; text?: string }
-  | { type: 'session.list'; limit?: number }
+  | { type: 'session.list'; limit?: number; include_archived?: boolean }
   | { type: 'session.get'; session_id: string }
+  | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean }
+  | { type: 'session.delete'; session_id: string }
+  | { type: 'session.fork'; session_id: string }
   | { type: 'run.start'; session_id: string; text: string; mode?: 'normal' | 'draft' | 'auto_approve'; reasoning?: 'low' | 'medium' | 'high' | 'max' }
   | { type: 'cost.export'; since?: number; until?: number }
   | { type: 'cost.status' }
@@ -120,6 +125,7 @@ export type ServerFrame =
   | { type: 'session.list'; sessions: SessionSummary[] }
   | { type: 'session.get'; session: SessionSummary; messages: Message[] }
   | { type: 'session.updated'; session: SessionSummary }
+  | { type: 'session.deleted'; session_id: string }
   | { type: 'run.started'; run_id: string; session_id: string }
   | { type: 'event'; session_id: string; run_id: string; seq: number; event: RunEvent }
   | { type: 'approval.required'; approval_id: string; session_id: string; run_id: string; tool: string; args: unknown; risk: string; expires_at: number }

@@ -42,7 +42,18 @@ export type RunEvent =
   | { type: 'escalation'; from: string; to: string; reason: string }
   | { type: 'compaction'; mode: 'prune' | 'summary'; before: number; after: number }
   | { type: 'skills_loaded'; names: string[] }
-  | { type: 'delegation'; phase: 'start' | 'end'; agent: string; runId: string; task: string; costUsd?: number; stop?: string }
+  | {
+      type: 'delegation'
+      phase: 'start' | 'end'
+      agent: string
+      runId: string
+      task: string
+      taskId?: string
+      background?: boolean
+      costUsd?: number
+      stop?: string
+      worktree?: { path: string; branch: string }
+    }
   | { type: 'hook'; event: string; tool?: string; allow: boolean; reason?: string }
   | { type: 'phase'; index: number; name: string; tools: string[] }
   | { type: 'run_finished'; stop: RunStop; steps: number; costUsd: number; error?: string }
@@ -52,6 +63,18 @@ export interface DelegationResult {
   costUsd: number
   runId: string
   stop: string
+  taskId?: string
+  agent?: string
+  worktree?: { path: string; branch: string }
+}
+
+export interface DelegationOptions {
+  worktree?: boolean
+}
+
+export interface SpawnHandle {
+  taskId: string
+  runId: string
 }
 
 export interface RunnerDeps {
@@ -69,7 +92,10 @@ export interface RunnerDeps {
   summarize?: Summarizer
   redact?: (text: string) => string
   preloadSkills?: Skill[]
-  delegate?: (agent: string, task: string) => Promise<DelegationResult>
+  delegate?: (agent: string, task: string, opts: DelegationOptions) => Promise<DelegationResult>
+  spawn?: (agent: string, task: string, opts: DelegationOptions) => Promise<SpawnHandle>
+  collect?: (taskId: string | undefined, wait: boolean) => Promise<DelegationResult[]>
+  pendingSpawns?: () => number
   hooks?: HookRunner
   sandbox?: SandboxOptions
   signal?: AbortSignal
@@ -122,18 +148,54 @@ function delegateTool(agents: string[]): ToolDefinition {
   return {
     name: 'delegate',
     description:
-      'Delega uma subtarefa a outro agente, mais barato ou mais especializado, e recebe apenas a resposta final dele. Use para leitura extensa, busca e resumo.',
+      'Delega uma subtarefa a outro agente e espera a resposta final dele. Varias chamadas de delegate na mesma resposta rodam em paralelo. ' +
+      'Com worktree=true o subagente trabalha em uma copia isolada do repositorio, em branch propria, sem tocar nos seus arquivos.',
     risk: 'read',
     inputSchema: {
       type: 'object',
       properties: {
         agent: { type: 'string', enum: agents },
         task: { type: 'string', description: 'Tarefa completa e autocontida, com caminhos e criterio de pronto.' },
+        worktree: { type: 'boolean', default: false },
       },
       required: ['agent', 'task'],
       additionalProperties: false,
     },
   }
+}
+
+function spawnTool(agents: string[]): ToolDefinition {
+  return {
+    name: 'spawn',
+    description:
+      'Inicia um subagente em segundo plano e devolve um task_id na hora, sem esperar. Continue trabalhando e chame collect para receber os resultados. ' +
+      'Com worktree=true o subagente edita em uma copia isolada do repositorio, em branch propria.',
+    risk: 'read',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        agent: { type: 'string', enum: agents },
+        task: { type: 'string', description: 'Tarefa completa e autocontida, com caminhos e criterio de pronto.' },
+        worktree: { type: 'boolean', default: false },
+      },
+      required: ['agent', 'task'],
+      additionalProperties: false,
+    },
+  }
+}
+
+const collectTool: ToolDefinition = {
+  name: 'collect',
+  description: 'Recebe resultados de subagentes iniciados com spawn. Sem task_id devolve todos; com wait=true espera os pendentes terminarem.',
+  risk: 'read',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      task_id: { type: 'string' },
+      wait: { type: 'boolean', default: true },
+    },
+    additionalProperties: false,
+  },
 }
 
 export class AgentRunner {
@@ -215,15 +277,26 @@ export class AgentRunner {
 
       if (result.stopReason === 'refusal') return this.finish('refusal', appended)
       if (result.stopReason === 'max_output') return this.finish('max_output', appended)
-      if (result.stopReason !== 'tool' || result.toolCalls.length === 0) return this.finish('end', appended)
+      if (result.stopReason !== 'tool' || result.toolCalls.length === 0) {
+        const pending = this.deps.pendingSpawns?.() ?? 0
+        if (pending === 0) return this.finish('end', appended)
+        const reminder: Message = {
+          role: 'user',
+          parts: [{ type: 'text', text: `Ainda ha ${pending} subagente(s) em segundo plano. Chame collect com wait=true, use os resultados e so entao conclua.` }],
+        }
+        messages.push(reminder)
+        appended.push(reminder)
+        sinceLast.push(reminder)
+        continue
+      }
 
+      const outcomes = await Promise.all(result.toolCalls.map((call) => this.executeCall(call, tools)))
       const results: ToolResultPart[] = []
       let anyInvalid = false
-      for (const call of result.toolCalls) {
-        const outcome = await this.executeCall(call, tools)
+      for (const [i, outcome] of outcomes.entries()) {
         if (outcome.invalid) anyInvalid = true
         results.push(outcome.part)
-        if (!outcome.part.isError) this.advancePhase(call.name, allTools)
+        if (!outcome.part.isError) this.advancePhase(result.toolCalls[i]!.name, allTools)
       }
       const toolMessage: Message = { role: 'tool', parts: results }
       messages.push(toolMessage)
@@ -381,22 +454,39 @@ export class AgentRunner {
 
   private async invoke(def: ToolDefinition, args: Record<string, unknown>): Promise<string> {
     if (def.name === 'load_skill') return this.loadSkill(String(args.name))
-    if (def.name === 'delegate') return this.delegate(String(args.agent), String(args.task))
+    if (def.name === 'delegate') return this.delegate(String(args.agent), String(args.task), { worktree: args.worktree === true })
+    if (def.name === 'spawn') return this.spawn(String(args.agent), String(args.task), { worktree: args.worktree === true })
+    if (def.name === 'collect') return this.collect(typeof args.task_id === 'string' ? args.task_id : undefined, args.wait !== false)
     if (def.name === 'plan' || def.name === 'done') return `registrado: ${String(args.summary).slice(0, 200)}`
     const tool = this.deps.tools.get(def.name)
     if (!tool) throw new Error(`ferramenta nao registrada: ${def.name}`)
     return tool.handler(args, { workspace: this.deps.workspace, signal: this.deps.signal, sandbox: this.deps.sandbox })
   }
 
-  private async delegate(agent: string, task: string): Promise<string> {
-    const { profile, delegate, emit } = this.deps
+  private async delegate(agent: string, task: string, opts: DelegationOptions): Promise<string> {
+    const { profile, delegate } = this.deps
     if (!delegate) throw new Error('delegacao nao disponivel neste daemon')
     if (!profile.delegates.includes(agent)) throw new Error(`agente ${agent} nao esta em delegates`)
-    emit({ type: 'delegation', phase: 'start', agent, runId: '', task })
-    const result = await delegate(agent, task)
+    const result = await delegate(agent, task, opts)
     this.costUsd += result.costUsd
-    emit({ type: 'delegation', phase: 'end', agent, runId: result.runId, task, costUsd: result.costUsd, stop: result.stop })
-    return `[resposta de ${agent}, custo ${result.costUsd.toFixed(4)} USD, parada ${result.stop}]\n${result.text}`
+    return renderDelegation(result, agent)
+  }
+
+  private async spawn(agent: string, task: string, opts: DelegationOptions): Promise<string> {
+    const { profile, spawn } = this.deps
+    if (!spawn) throw new Error('spawn nao disponivel neste daemon')
+    if (!profile.delegates.includes(agent)) throw new Error(`agente ${agent} nao esta em delegates`)
+    const handle = await spawn(agent, task, opts)
+    return `subagente ${agent} iniciado em segundo plano, task_id ${handle.taskId}. Continue e chame collect para receber o resultado.`
+  }
+
+  private async collect(taskId: string | undefined, wait: boolean): Promise<string> {
+    const { collect } = this.deps
+    if (!collect) throw new Error('collect nao disponivel neste daemon')
+    const results = await collect(taskId, wait)
+    for (const r of results) this.costUsd += r.costUsd
+    if (results.length === 0) return wait ? 'nenhum subagente pendente' : 'nenhum resultado pronto ainda; chame collect com wait=true para esperar'
+    return results.map((r) => `task_id ${r.taskId ?? '?'}\n${renderDelegation(r, r.agent ?? 'subagente')}`).join('\n\n')
   }
 
   private loadSkill(name: string): string {
@@ -420,6 +510,7 @@ export class AgentRunner {
     const defs = tools.definitions(wanted)
     if (profile.skills.length > 0) defs.push(loadSkillTool)
     if (profile.delegates.length > 0 && this.deps.delegate) defs.push(delegateTool(profile.delegates))
+    if (profile.delegates.length > 0 && this.deps.spawn && this.deps.collect) defs.push(spawnTool(profile.delegates), collectTool)
     for (const phase of profile.phases ?? []) {
       for (const name of phase.tools) {
         const signal = signalTools.find((t) => t.name === name)
@@ -509,6 +600,11 @@ export function budgetFor(
     },
     { runId: ids.runId, sessionId: ids.sessionId, agent: profile.name },
   )
+}
+
+function renderDelegation(r: DelegationResult, agent: string): string {
+  const where = r.worktree ? `, worktree ${r.worktree.path} na branch ${r.worktree.branch}` : ''
+  return `[resposta de ${agent}, custo ${r.costUsd.toFixed(4)} USD, parada ${r.stop}${where}]\n${r.text}`
 }
 
 function errorResult(call: ToolCallPart, message: string): ToolResultPart {

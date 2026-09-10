@@ -29,6 +29,8 @@ export interface OpenAICompatibleOptions {
   sendReasoningEffort?: boolean
   reasoningEffortOverride?: string
   effortCap?: 'high'
+  noEffortWithTools?: boolean
+  useMaxCompletionTokens?: boolean
   deepseekThinking?: boolean
   temperature?: number
   seed?: number
@@ -48,7 +50,10 @@ interface ToolCallAccumulator {
   id: string
   name: string
   args: string
+  extra: Record<string, unknown>
 }
+
+const toolCallStandardKeys = new Set(['index', 'id', 'type', 'function'])
 
 type OpenAIEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
@@ -130,8 +135,9 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       messages: [{ role: 'system', content: req.system }, ...toMessages(req.messages)],
       stream: true,
       stream_options: { include_usage: true },
-      max_tokens: req.maxOutput,
     }
+    if (this.opts.useMaxCompletionTokens) params.max_completion_tokens = req.maxOutput
+    else params.max_tokens = req.maxOutput
     if (req.tools.length > 0) {
       params.tools = req.tools.map(toTool)
       params.tool_choice = 'auto'
@@ -139,6 +145,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
     if (this.opts.sendReasoningEffort) {
       let effort = this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]
       if (this.opts.effortCap === 'high' && (effort === 'xhigh' || effort === 'max')) effort = 'high'
+      if (this.opts.noEffortWithTools && req.tools.length > 0) effort = 'none'
       params.reasoning_effort = effort as ChatParams['reasoning_effort']
     }
     if (this.opts.temperature !== undefined) params.temperature = this.opts.temperature
@@ -173,11 +180,25 @@ function accumulateToolCall(
   calls: Map<number, ToolCallAccumulator>,
   tc: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
 ): void {
-  const current = calls.get(tc.index) ?? { id: '', name: '', args: '' }
+  const index = resolveIndex(calls, tc)
+  const current = calls.get(index) ?? { id: '', name: '', args: '', extra: {} }
   if (tc.id) current.id = tc.id
   if (tc.function?.name) current.name += tc.function.name
   if (tc.function?.arguments) current.args += tc.function.arguments
-  calls.set(tc.index, current)
+  for (const [k, v] of Object.entries(tc as unknown as Record<string, unknown>)) {
+    if (!toolCallStandardKeys.has(k) && v !== undefined && v !== null) current.extra[k] = v
+  }
+  calls.set(index, current)
+}
+
+/** Provedores como o Gemini omitem `index`; um `id` novo abre um acumulador e um delta sem id continua o ultimo. */
+function resolveIndex(calls: Map<number, ToolCallAccumulator>, tc: { index?: number; id?: string }): number {
+  if (typeof tc.index === 'number') return tc.index
+  if (tc.id) {
+    for (const [i, c] of calls) if (c.id === tc.id) return i
+    return calls.size
+  }
+  return Math.max(0, calls.size - 1)
 }
 
 function buildAssistant(text: string, calls: Map<number, ToolCallAccumulator>, reasoning: string): Message {
@@ -190,6 +211,7 @@ function buildAssistant(text: string, calls: Map<number, ToolCallAccumulator>, r
       name: call.name,
       args: parseArgs(call.args),
       rawArgs: call.args,
+      extra: Object.keys(call.extra).length > 0 ? call.extra : undefined,
     })
   }
   const message: Message = { role: 'assistant', parts }
@@ -229,6 +251,7 @@ function toChatMessages(m: Message): ChatMessage[] {
 function toAssistantMessage(m: Message): ChatMessage {
   const text = m.parts.map(partText).join('')
   const toolCalls = m.parts.filter(isToolCall).map((p) => ({
+    ...(p.extra ?? {}),
     id: p.id,
     type: 'function' as const,
     function: { name: p.name, arguments: p.rawArgs ?? JSON.stringify(p.args ?? {}) },

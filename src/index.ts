@@ -65,7 +65,9 @@ export {
 export {
   AgentRunner,
   budgetFor,
+  type DelegationOptions,
   type DelegationResult,
+  type SpawnHandle,
   type RunEvent,
   type RunInput,
   type RunResult,

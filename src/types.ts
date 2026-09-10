@@ -23,6 +23,7 @@ export interface ToolCallPart {
   name: string
   args: unknown
   rawArgs?: string
+  extra?: Record<string, unknown>
 }
 
 export interface ToolResultPart {

@@ -52,7 +52,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     const res = await this.client.messages.countTokens({
       model: this.model,
       system: toSystem(req),
-      tools: toTools(req.tools),
+      tools: toTools(req.tools, req.systemCacheTtl),
       messages: toMessages(req.messages),
     })
     return res.input_tokens
@@ -80,7 +80,7 @@ export class AnthropicAdapter implements ProviderAdapter {
       model: this.model,
       max_tokens: req.maxOutput,
       system: toSystem(req),
-      tools: toTools(req.tools),
+      tools: toTools(req.tools, req.systemCacheTtl),
       messages: toMessages(req.messages),
     }
     if (this.sendEffort) params.output_config = { effort: effortByReasoning[req.reasoning] }
@@ -101,24 +101,23 @@ export function mapAnthropicUsage(usage: Anthropic.Usage | null | undefined): Us
   }
 }
 
-function toSystem(req: ChatRequest): Anthropic.TextBlockParam[] {
-  return [
-    {
-      type: 'text',
-      text: req.system,
-      cache_control: { type: 'ephemeral', ttl: req.systemCacheTtl },
-    },
-  ]
+/** Marcador de cache com o TTL do perfil. Tools vem antes de system na ordem de cache, entao os dois usam o mesmo TTL. */
+function cacheControl(ttl: '5m' | '1h'): Anthropic.CacheControlEphemeral {
+  return ttl === '1h' ? { type: 'ephemeral', ttl: '1h' } : { type: 'ephemeral' }
 }
 
-function toTools(tools: ToolDefinition[]): Anthropic.Tool[] {
+function toSystem(req: ChatRequest): Anthropic.TextBlockParam[] {
+  return [{ type: 'text', text: req.system, cache_control: cacheControl(req.systemCacheTtl) }]
+}
+
+function toTools(tools: ToolDefinition[], ttl: '5m' | '1h'): Anthropic.Tool[] {
   return tools.map((t, i) => {
     const tool: Anthropic.Tool = {
       name: t.name,
       description: t.description,
       input_schema: t.inputSchema as Anthropic.Tool.InputSchema,
     }
-    if (i === tools.length - 1) tool.cache_control = { type: 'ephemeral' }
+    if (i === tools.length - 1) tool.cache_control = cacheControl(ttl)
     return tool
   })
 }

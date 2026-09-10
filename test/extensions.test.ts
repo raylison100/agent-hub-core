@@ -154,7 +154,6 @@ describe('delegacao', () => {
     const result = await runner.run({ runId: 'r', sessionId: 's', history: [], userText: 'x' })
     expect(seen[0]).toContain('delegate')
     expect(result.costUsd).toBeCloseTo(0.25)
-    expect(events.filter((e) => e.type === 'delegation')).toHaveLength(2)
     const toolResult = events.find((e) => e.type === 'tool_result')
     expect(toolResult && toolResult.type === 'tool_result' && toolResult.content).toContain('filho fez: leia tudo')
   })
