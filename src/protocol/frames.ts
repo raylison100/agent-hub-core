@@ -141,6 +141,8 @@ export type ClientFrame =
   | { type: 'skill.get'; name: string }
   | { type: 'plugins.list' }
   | { type: 'routing.info' }
+  | { type: 'workspace.roots' }
+  | { type: 'workspace.list'; path: string }
   | { type: 'feedback.set'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
   | { type: 'feedback.list'; session_id: string }
   | { type: 'feedback.summary' }
@@ -158,6 +160,8 @@ export type ServerFrame =
   | { type: 'session.deleted'; session_id: string }
   | { type: 'run.started'; run_id: string; session_id: string }
   | { type: 'routing.info'; default_agent: string | null; improver: string | null; classifier: string | null }
+  | { type: 'workspace.roots'; roots: string[] }
+  | { type: 'workspace.list'; path: string; dirs: string[] }
   | { type: 'feedback.ok'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
   | { type: 'feedback.list'; session_id: string; items: { run_id: string; verdict: 'good' | 'bad' }[] }
   | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
