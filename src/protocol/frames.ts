@@ -174,6 +174,7 @@ export type ClientFrame =
   | { type: 'routing.info' }
   | { type: 'workspace.roots' }
   | { type: 'workspace.list'; path: string }
+  | { type: 'workspace.find'; name: string }
   | { type: 'feedback.set'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
   | { type: 'feedback.list'; session_id: string }
   | { type: 'feedback.summary' }
@@ -199,6 +200,7 @@ export type ServerFrame =
   | { type: 'routing.info'; default_agent: string | null; improver: string | null; classifier: string | null }
   | { type: 'workspace.roots'; roots: string[]; wsl_distro: string | null }
   | { type: 'workspace.list'; path: string; dirs: string[] }
+  | { type: 'workspace.find'; name: string; paths: string[] }
   | { type: 'feedback.ok'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
   | { type: 'feedback.list'; session_id: string; items: { run_id: string; verdict: 'good' | 'bad' }[] }
   | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
