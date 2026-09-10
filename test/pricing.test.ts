@@ -37,3 +37,44 @@ describe('Pricing', () => {
     expect(() => pricing.resolve('openai', 'gpt-x')).toThrow(PricingMissingError)
   })
 })
+
+describe('desconto fora de pico', () => {
+  const tabela = new Pricing({
+    version: 'teste',
+    models: { 'deepseek/deepseek-v4-flash': { input: 0.44, output: 1.32, cache_read: 0.014, cache_write: 0 } },
+    time_discounts: {
+      'deepseek/*': { multiplier: 0.5, peak_utc: { weekdays_only: true, ranges: [['01:00', '04:00'], ['06:00', '10:00']] } },
+    },
+  })
+  const usage = { input: 1_000_000, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, missing: false }
+  const segundaPico = new Date('2026-09-07T02:30:00Z')
+  const segundaForaDePico = new Date('2026-09-07T12:00:00Z')
+  const domingo = new Date('2026-09-06T02:30:00Z')
+
+  it('cobra cheio dentro da janela de pico em dia util', () => {
+    expect(tabela.multiplierAt('deepseek', 'deepseek-v4-flash', segundaPico)).toBe(1)
+    expect(tabela.cost('deepseek', 'deepseek-v4-flash', usage, segundaPico)).toBeCloseTo(0.44, 6)
+  })
+
+  it('cobra metade fora da janela e no fim de semana', () => {
+    expect(tabela.multiplierAt('deepseek', 'deepseek-v4-flash', segundaForaDePico)).toBe(0.5)
+    expect(tabela.cost('deepseek', 'deepseek-v4-flash', usage, segundaForaDePico)).toBeCloseTo(0.22, 6)
+    expect(tabela.multiplierAt('deepseek', 'deepseek-v4-flash', domingo)).toBe(0.5)
+  })
+
+  it('borda da janela: comeco conta como pico, fim nao', () => {
+    expect(tabela.multiplierAt('deepseek', 'deepseek-v4-flash', new Date('2026-09-07T01:00:00Z'))).toBe(1)
+    expect(tabela.multiplierAt('deepseek', 'deepseek-v4-flash', new Date('2026-09-07T04:00:00Z'))).toBe(0.5)
+  })
+
+  it('preco efetivo escala todos os campos', () => {
+    const p = tabela.effective('deepseek', 'deepseek-v4-flash', segundaForaDePico)
+    expect(p.input).toBeCloseTo(0.22, 6)
+    expect(p.output).toBeCloseTo(0.66, 6)
+    expect(p.cache_read).toBeCloseTo(0.007, 6)
+  })
+
+  it('provedor sem desconto segue em 1', () => {
+    expect(pricing.multiplierAt('anthropic', 'claude-opus-5', segundaForaDePico)).toBe(1)
+  })
+})

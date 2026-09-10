@@ -1,6 +1,6 @@
 export * from './types.js'
 export * from './providers/index.js'
-export { Pricing, PricingMissingError, type ModelPrice, type PricingTable } from './cost/pricing.js'
+export { Pricing, PricingMissingError, type TimeDiscount, type ModelPrice, type PricingTable } from './cost/pricing.js'
 export { Ledger, type LedgerEntry, type LedgerFilter, type LedgerTotals, type ReportGroup, type ReportRow } from './cost/ledger.js'
 export { Budget, BudgetExceededError, type BudgetLimits, type BudgetScope, type BudgetWarning } from './cost/budget.js'
 export {
