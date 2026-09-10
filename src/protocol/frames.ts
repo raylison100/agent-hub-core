@@ -15,6 +15,7 @@ export interface SessionSummary {
   origin: string
   pinned: boolean
   archived: boolean
+  group: string | null
   mode: RunMode
   createdAt: number
   updatedAt: number
@@ -98,7 +99,9 @@ export type ClientFrame =
   | { type: 'session.create'; agent?: string; workspace: string; title?: string; text?: string }
   | { type: 'session.list'; limit?: number; include_archived?: boolean }
   | { type: 'session.get'; session_id: string }
-  | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean; agent?: string; mode?: RunMode }
+  | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean; agent?: string; mode?: RunMode; group?: string | null }
+  | { type: 'session.update_many'; session_ids: string[]; pinned?: boolean; archived?: boolean; group?: string | null }
+  | { type: 'session.delete_many'; session_ids: string[] }
   | { type: 'session.delete'; session_id: string }
   | { type: 'session.fork'; session_id: string }
   | {
@@ -173,6 +176,7 @@ export type ServerFrame =
   | { type: 'session.get'; session: SessionSummary; messages: Message[]; children: { run_id: string; parent_run_id: string; agent: string; messages: Message[] }[] }
   | { type: 'session.updated'; session: SessionSummary }
   | { type: 'session.deleted'; session_id: string }
+  | { type: 'session.deleted_many'; session_ids: string[] }
   | { type: 'run.started'; run_id: string; session_id: string }
   | { type: 'routing.info'; default_agent: string | null; improver: string | null; classifier: string | null }
   | { type: 'workspace.roots'; roots: string[]; wsl_distro: string | null }
