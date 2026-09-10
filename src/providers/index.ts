@@ -2,9 +2,11 @@ import type { AgentProfile } from '../agents/schema.js'
 import type { ProviderAdapter } from '../types.js'
 import { AnthropicAdapter } from './anthropic.js'
 import { OpenAICompatibleAdapter } from './openai-compatible.js'
+import { OpenAIResponsesAdapter } from './openai-responses.js'
 
 export { AnthropicAdapter, mapAnthropicUsage } from './anthropic.js'
 export { OpenAICompatibleAdapter, mapOpenAICompatibleUsage } from './openai-compatible.js'
+export { OpenAIResponsesAdapter, mapResponsesUsage, toInput as toResponsesInput, buildAssistant as buildResponsesAssistant } from './openai-responses.js'
 
 const defaultBaseUrl: Record<string, string | undefined> = {
   deepseek: 'https://api.deepseek.com',
@@ -66,6 +68,16 @@ export function createAdapter(profile: AgentProfile, env: NodeJS.ProcessEnv = pr
     })
   }
   if (!apiKey) throw new MissingApiKeyError(keyEnv, profile.provider)
+  if (profile.provider === 'openai' && (stringOpt(opts, 'api', env) ?? 'responses') === 'responses') {
+    return new OpenAIResponsesAdapter({
+      model,
+      apiKey,
+      baseURL,
+      reasoningEffortOverride: stringOpt(opts, 'reasoning_effort'),
+      temperature: numberOpt(opts, 'temperature'),
+      extraBody: recordOpt(opts, 'extra_body'),
+    })
+  }
   return new OpenAICompatibleAdapter({
     provider: profile.provider,
     model,
