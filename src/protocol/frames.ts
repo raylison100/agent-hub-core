@@ -160,7 +160,7 @@ export type ServerFrame =
   | { type: 'session.deleted'; session_id: string }
   | { type: 'run.started'; run_id: string; session_id: string }
   | { type: 'routing.info'; default_agent: string | null; improver: string | null; classifier: string | null }
-  | { type: 'workspace.roots'; roots: string[] }
+  | { type: 'workspace.roots'; roots: string[]; wsl_distro: string | null }
   | { type: 'workspace.list'; path: string; dirs: string[] }
   | { type: 'feedback.ok'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
   | { type: 'feedback.list'; session_id: string; items: { run_id: string; verdict: 'good' | 'bad' }[] }
