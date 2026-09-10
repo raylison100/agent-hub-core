@@ -135,6 +135,7 @@ export type ClientFrame =
   | { type: 'mcp.toggle'; name: string; enabled: boolean }
   | { type: 'mcp.import'; source: 'claude-code' }
   | { type: 'mcp.connect'; name: string }
+  | { type: 'mcp.agents'; name: string; agents: string[] }
   | { type: 'mcp.resources'; server: string }
   | { type: 'mcp.resource.read'; server: string; uri: string }
   | { type: 'mcp.prompts'; server: string }
@@ -204,9 +205,10 @@ export type ServerFrame =
   | { type: 'automation.runs'; runs: AutomationRun[] }
   | {
       type: 'mcp.servers'
-      servers: { name: string; connected: boolean; enabled: boolean; transport: 'stdio' | 'http'; command: string; args: string[]; url: string | null; tools: number; error: string | null }[]
+      servers: { name: string; connected: boolean; enabled: boolean; transport: 'stdio' | 'http'; command: string; args: string[]; url: string | null; tools: number; error: string | null; agents: string[] }[]
     }
   | { type: 'mcp.saved'; added: string[]; secrets: string[] }
+  | { type: 'mcp.agents'; name: string; agents: string[] }
   | { type: 'mcp.resources'; server: string; resources: { uri: string; name?: string; description?: string; mimeType?: string }[] }
   | { type: 'mcp.resource.read'; server: string; uri: string; text: string }
   | { type: 'mcp.prompts'; server: string; prompts: { name: string; description?: string; arguments?: { name: string; required?: boolean }[] }[] }
