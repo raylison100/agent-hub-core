@@ -132,7 +132,7 @@ export type ServerFrame =
   | { type: 'session.created'; session: SessionSummary; routed?: { intent: string | null; rule: unknown } }
   | { type: 'budget.overridden'; run_id: string; scope: string; limit_usd: number }
   | { type: 'session.list'; sessions: SessionSummary[] }
-  | { type: 'session.get'; session: SessionSummary; messages: Message[] }
+  | { type: 'session.get'; session: SessionSummary; messages: Message[]; children: { run_id: string; parent_run_id: string; agent: string; messages: Message[] }[] }
   | { type: 'session.updated'; session: SessionSummary }
   | { type: 'session.deleted'; session_id: string }
   | { type: 'run.started'; run_id: string; session_id: string }
