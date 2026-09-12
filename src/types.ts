@@ -36,7 +36,8 @@ export interface ToolResultPart {
 export interface ImagePart {
   type: 'image'
   mediaType: string
-  data: string
+  data?: string
+  ref?: string
   name?: string
 }
 

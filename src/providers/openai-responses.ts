@@ -188,7 +188,7 @@ export function toInput(messages: Message[]): InputItem[] {
 
 /** Texto simples quando nao ha imagem; com imagem, a lista de conteudos de entrada da Responses API. */
 function toUserContent(m: Message): string | OpenAI.Responses.ResponseInputMessageContentList {
-  const images = m.parts.filter((p): p is Extract<Part, { type: 'image' }> => p.type === 'image')
+  const images = m.parts.filter((p): p is Extract<Part, { type: 'image' }> => p.type === 'image' && Boolean(p.data))
   const text = m.parts.map(partText).filter(Boolean).join('\n')
   if (images.length === 0) return text
   const content: OpenAI.Responses.ResponseInputMessageContentList = []

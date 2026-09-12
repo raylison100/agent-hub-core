@@ -261,7 +261,7 @@ function toTool(t: ToolDefinition): ChatTool {
   }
 }
 
-function toMessages(messages: Message[]): ChatMessage[] {
+export function toMessages(messages: Message[]): ChatMessage[] {
   return messages.flatMap(toChatMessages)
 }
 
@@ -273,7 +273,7 @@ function toChatMessages(m: Message): ChatMessage[] {
 
 /** Texto puro quando nao ha imagem; com imagem, as partes de conteudo que os provedores compativeis com OpenAI esperam. */
 function toUserContent(m: Message): string | OpenAI.Chat.Completions.ChatCompletionContentPart[] {
-  const images = m.parts.filter((p): p is Extract<Part, { type: 'image' }> => p.type === 'image')
+  const images = m.parts.filter((p): p is Extract<Part, { type: 'image' }> => p.type === 'image' && Boolean(p.data))
   const text = m.parts.map(partText).filter(Boolean).join('\n')
   if (images.length === 0) return text
   const parts: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []

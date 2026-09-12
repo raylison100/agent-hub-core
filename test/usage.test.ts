@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mapAnthropicUsage } from '../src/providers/anthropic.js'
-import { mapOpenAICompatibleUsage } from '../src/providers/openai-compatible.js'
+import { mapOpenAICompatibleUsage, toMessages as toOpenAiMessages } from '../src/providers/openai-compatible.js'
+import type { Message } from '../src/types.js'
 
 describe('mapAnthropicUsage', () => {
   it('separa entrada, saida e cache', () => {
@@ -50,5 +51,30 @@ describe('mapOpenAICompatibleUsage', () => {
 
   it('marca ausencia de usage', () => {
     expect(mapOpenAICompatibleUsage(undefined).missing).toBe(true)
+  })
+})
+
+describe('imagem com referencia', () => {
+  it('adaptadores ignoram imagem sem base64 em vez de mandar data uri quebrada', () => {
+    const mensagem: Message = {
+      role: 'user',
+      parts: [
+        { type: 'text', text: 'olha isso' },
+        { type: 'image', mediaType: 'image/png', ref: 'abc123' },
+      ],
+    }
+    const compat = toOpenAiMessages([mensagem])[0]
+    expect(typeof compat?.content).toBe('string')
+    expect(compat?.content).toBe('olha isso')
+  })
+
+  it('com base64 presente, a imagem vai como data uri', () => {
+    const mensagem: Message = {
+      role: 'user',
+      parts: [{ type: 'image', mediaType: 'image/png', data: 'QUJD' }],
+    }
+    const partes = toOpenAiMessages([mensagem])[0]?.content
+    expect(Array.isArray(partes)).toBe(true)
+    expect(JSON.stringify(partes)).toContain('data:image/png;base64,QUJD')
   })
 })
