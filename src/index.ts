@@ -51,6 +51,7 @@ export {
   activatedSkills,
   classifyIntent,
   classifierPrompt,
+  improverAgent,
   improverPrompt,
   needsDelegation,
   parseClassifierAnswer,

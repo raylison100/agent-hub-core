@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { needsDelegation } from '../src/agents/routing.js'
+import { PromptImproverSchema, improverAgent, needsDelegation } from '../src/agents/routing.js'
 import { ScoringSchema, blendedCost, callCost, feedbackDelta, scoreAgents, type ScoreCandidate } from '../src/agents/scoring.js'
 import type { ModelPrice } from '../src/cost/pricing.js'
 
@@ -198,5 +198,21 @@ describe('callCost', () => {
   })
   it('devolve null quando falta preco', () => {
     expect(callCost({ input: 2, output: null }, 100, 100)).toBeNull()
+  })
+})
+
+describe('improverAgent', () => {
+  const cfg = PromptImproverSchema.parse({ agent: 'qwen3', remote_agent: 'gemini', max_local_chars: 50 })
+
+  it('pedido curto fica no modelo local', () => {
+    expect(improverAgent(cfg, 'cria uma funcao que soma dois numeros')).toBe('qwen3')
+  })
+
+  it('pedido grande vai para o remoto', () => {
+    expect(improverAgent(cfg, 'x'.repeat(200))).toBe('gemini')
+  })
+
+  it('sem remoto declarado, sempre o local', () => {
+    expect(improverAgent(PromptImproverSchema.parse({ agent: 'qwen3' }), 'x'.repeat(5000))).toBe('qwen3')
   })
 })

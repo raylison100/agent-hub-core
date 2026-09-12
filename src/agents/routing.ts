@@ -24,6 +24,8 @@ export const ClassifierSchema = z.object({
 
 export const PromptImproverSchema = z.object({
   agent: z.string(),
+  remote_agent: z.string().optional(),
+  max_local_chars: z.number().int().positive().default(1200),
   min_chars: z.number().int().nonnegative().default(12),
   max_output: z.number().int().positive().default(1200),
   timeout_ms: z.number().int().positive().default(60000),
@@ -130,6 +132,12 @@ const delegationHints = [
 /** Pedido que fala em subagente, delegacao ou agentes trabalhando em paralelo: quem nao delega nao serve. */
 export function needsDelegation(text: string): boolean {
   return delegationHints.some((r) => r.test(text))
+}
+
+/** Pedido curto vai ao improver local, de graca; pedido grande vai ao remoto, que aguenta texto longo sem perder qualidade nem demorar. */
+export function improverAgent(cfg: PromptImprover, text: string): string {
+  if (!cfg.remote_agent || text.trim().length <= cfg.max_local_chars) return cfg.agent
+  return cfg.remote_agent
 }
 
 /** Primeira regra que casa decide o agente. Sem regra casando, devolve null. `intentOverride` vem do classificador por modelo. */
