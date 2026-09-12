@@ -23,11 +23,19 @@ const AgentStepSchema = z.object({
   agent: z.string(),
   prompt: z.string().min(1),
   tools: z.array(z.string()).optional(),
+  max_steps: z.number().int().positive().optional(),
   output_schema: z.record(z.string(), z.unknown()).optional(),
   retry: RetrySchema.optional(),
 })
 
-export const WorkflowStepSchema = z.union([ToolStepSchema, AgentStepSchema])
+const GateStepSchema = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9_]*$/),
+  gate: z.string().min(1),
+  question: z.string().optional(),
+  on_fail: z.enum(['ask', 'stop']).default('ask'),
+})
+
+export const WorkflowStepSchema = z.union([ToolStepSchema, AgentStepSchema, GateStepSchema])
 
 export const WorkflowSchema = z.object({
   name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
@@ -41,6 +49,7 @@ export const WorkflowSchema = z.object({
 export type WorkflowRetry = z.infer<typeof RetrySchema>
 export type ToolStep = z.infer<typeof ToolStepSchema>
 export type AgentStep = z.infer<typeof AgentStepSchema>
+export type GateStep = z.infer<typeof GateStepSchema>
 export type WorkflowStep = z.infer<typeof WorkflowStepSchema>
 export type Workflow = z.infer<typeof WorkflowSchema>
 
@@ -51,13 +60,21 @@ export interface WorkflowSummary {
   mode: 'draft' | 'normal'
   maxCostUsd: number | null
   budgetUsd: number | null
-  steps: { id: string; kind: 'tool' | 'agent'; target: string }[]
+  steps: { id: string; kind: 'tool' | 'agent' | 'gate'; target: string }[]
 }
 
 export type StepResult = Record<string, unknown> & { output: string; exit_code?: number; cost_usd?: number }
 
 export function isToolStep(step: WorkflowStep): step is ToolStep {
   return 'tool' in step
+}
+
+export function isGateStep(step: WorkflowStep): step is GateStep {
+  return 'gate' in step
+}
+
+export function isAgentStep(step: WorkflowStep): step is AgentStep {
+  return 'agent' in step
 }
 
 /** Le `agents/workflows/*.yaml` validando cada arquivo. */
@@ -78,22 +95,29 @@ export function loadWorkflows(dir: string): { workflows: Map<string, Workflow>; 
   return { workflows, errors }
 }
 
-/** Custo maximo antes de rodar: soma do orcamento por run de cada etapa de agente, vezes as repeticoes possiveis. */
-export function maxWorkflowCost(wf: Workflow, profiles: Map<string, AgentProfile>): number | null {
+/** Repeticao possivel de cada etapa, contando os retry que voltam para tras. */
+function repetitions(wf: Workflow): Map<string, number> {
   const multiplier = new Map<string, number>()
   for (const step of wf.steps) multiplier.set(step.id, 1)
   for (const step of wf.steps) {
-    if (!step.retry) continue
-    const from = wf.steps.findIndex((s) => s.id === step.retry!.step)
+    const retry = isGateStep(step) ? undefined : step.retry
+    if (!retry) continue
+    const from = wf.steps.findIndex((s) => s.id === retry.step)
     const to = wf.steps.findIndex((s) => s.id === step.id)
     for (let i = from; i <= to; i++) {
       const id = wf.steps[i]!.id
-      multiplier.set(id, (multiplier.get(id) ?? 1) + step.retry.max)
+      multiplier.set(id, (multiplier.get(id) ?? 1) + retry.max)
     }
   }
+  return multiplier
+}
+
+/** Custo maximo antes de rodar: soma do orcamento por run de cada etapa de agente, vezes as repeticoes possiveis. */
+export function maxWorkflowCost(wf: Workflow, profiles: Map<string, AgentProfile>): number | null {
+  const multiplier = repetitions(wf)
   let total = 0
   for (const step of wf.steps) {
-    if (isToolStep(step)) continue
+    if (!isAgentStep(step)) continue
     const profile = profiles.get(step.agent)
     if (!profile || profile.budget.run_usd === undefined) return null
     total += profile.budget.run_usd * (multiplier.get(step.id) ?? 1)
@@ -109,7 +133,7 @@ export function summarizeWorkflow(wf: Workflow, profiles: Map<string, AgentProfi
     mode: wf.mode,
     maxCostUsd: maxWorkflowCost(wf, profiles),
     budgetUsd: wf.budget_usd ?? null,
-    steps: wf.steps.map((s) => (isToolStep(s) ? { id: s.id, kind: 'tool', target: s.tool } : { id: s.id, kind: 'agent', target: s.agent })),
+    steps: wf.steps.map((s) => (isToolStep(s) ? { id: s.id, kind: 'tool' as const, target: s.tool } : isGateStep(s) ? { id: s.id, kind: 'gate' as const, target: s.gate } : { id: s.id, kind: 'agent' as const, target: s.agent })),
   }
 }
 
@@ -166,10 +190,11 @@ function validateReferences(wf: Workflow): void {
     ids.add(step.id)
   }
   for (const step of wf.steps) {
-    if (!step.retry) continue
-    const from = wf.steps.findIndex((s) => s.id === step.retry!.step)
+    const retry = isGateStep(step) ? undefined : step.retry
+    if (!retry) continue
+    const from = wf.steps.findIndex((s) => s.id === retry.step)
     const to = wf.steps.findIndex((s) => s.id === step.id)
-    if (from === -1) throw new Error(`retry de ${step.id} aponta para etapa inexistente: ${step.retry.step}`)
+    if (from === -1) throw new Error(`retry de ${step.id} aponta para etapa inexistente: ${retry.step}`)
     if (from > to) throw new Error(`retry de ${step.id} precisa apontar para uma etapa anterior ou a propria`)
   }
 }

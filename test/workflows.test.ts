@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseProfile } from '../src/agents/load.js'
-import { WorkflowSchema, evaluateCondition, maxWorkflowCost, parseExitCode, renderArgs, renderTemplate } from '../src/agents/workflows.js'
+import { WorkflowSchema, evaluateCondition, isGateStep, maxWorkflowCost, parseExitCode, renderArgs, renderTemplate, summarizeWorkflow } from '../src/agents/workflows.js'
 
 const wf = WorkflowSchema.parse({
   name: 'teste',
@@ -57,5 +57,41 @@ describe('workflows', () => {
         ],
       }),
     ).not.toThrow()
+  })
+})
+
+describe('portao de confianca', () => {
+  const comPortao = WorkflowSchema.parse({
+    name: 'deliberar',
+    inputs: ['proposta'],
+    steps: [
+      { id: 'analisar', agent: 'dev', prompt: '{{proposta}}' },
+      { id: 'conferir', gate: 'analisar.confianca >= 0.7', question: 'confianca {{analisar.confianca}}, seguir?' },
+    ],
+  })
+
+  it('le o portao com o padrao de perguntar ao usuario', () => {
+    const step = comPortao.steps[1]!
+    expect(isGateStep(step)).toBe(true)
+    expect(isGateStep(step) && step.on_fail).toBe('ask')
+  })
+
+  it('portao nao entra na conta de custo nem exige agente', () => {
+    expect(maxWorkflowCost(comPortao, new Map([['dev', profile('dev', 0.3)]]))).toBeCloseTo(0.3)
+  })
+
+  it('a condicao le o resultado das etapas anteriores pelo caminho', () => {
+    const contexto = { analisar: { output: 'x', confianca: 0.9 } }
+    expect(evaluateCondition('analisar.confianca >= 0.7', contexto as never)).toBe(true)
+    expect(evaluateCondition('analisar.confianca >= 0.7', { analisar: { output: 'x', confianca: 0.4 } } as never)).toBe(false)
+  })
+
+  it('a pergunta sai com os valores da deliberacao', () => {
+    expect(renderTemplate('confianca {{analisar.confianca}}, seguir?', { analisar: { confianca: 0.4 } })).toBe('confianca 0.4, seguir?')
+  })
+
+  it('o resumo mostra o portao como etapa propria', () => {
+    const resumo = summarizeWorkflow(comPortao, new Map([['dev', profile('dev', 0.3)]]))
+    expect(resumo.steps[1]).toEqual({ id: 'conferir', kind: 'gate', target: 'analisar.confianca >= 0.7' })
   })
 })

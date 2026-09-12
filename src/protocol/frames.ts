@@ -245,8 +245,8 @@ export type ServerFrame =
   | { type: 'mcp.prompt.get'; server: string; name: string; text: string }
   | { type: 'workflow.list'; workflows: WorkflowSummary[] }
   | { type: 'workflow.started'; name: string; session_id: string; run_id: string; max_cost_usd: number | null }
-  | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry'; ms?: number; cost_usd?: number; detail?: string }
-  | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded'; cost_usd: number; outputs: Record<string, unknown>; error?: string }
+  | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry' | 'escalated'; ms?: number; cost_usd?: number; detail?: string }
+  | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded' | 'escalated'; cost_usd: number; outputs: Record<string, unknown>; error?: string }
   | { type: 'secrets.list'; secrets: { name: string; hint: string; length: number; updated_at: number; source: 'db' | 'env' }[] }
   | { type: 'fs.list'; path: string; entries: { name: string; dir: boolean }[] }
   | { type: 'fs.read'; path: string; text: string; truncated: boolean }
