@@ -211,9 +211,18 @@ const git: RegisteredTool = {
     if (!gitAllowed.has(sub)) throw new Error(`subcomando git nao permitido: ${sub}`)
     if (sub === 'checkout' && list[1] !== '-b') throw new Error('checkout permitido apenas com -b para branch nova')
     if (list.some((a) => a === '--force' || a === '-f')) throw new Error('flags de forca nao permitidas')
-    const quoted = list.map((a) => `'${a.replace(/'/g, `'\\''`)}'`).join(' ')
-    return runShell(`git ${quoted}`, resolveInside(ctx.workspace, '.'), defaultTimeoutMs, ctx)
+    const dir = resolveInside(ctx.workspace, '.')
+    if (!isRepoRoot(dir)) {
+      return `sem repositorio git nesta pasta: ${dir}. Sem repositorio proprio, o git subiria para o repositorio de uma pasta acima e mostraria arquivos fora do workspace. Escolha a raiz do repositorio como workspace.`
+    }
+    const quoted = list.map(shellQuote).join(' ')
+    return runShell(`git ${quoted}`, dir, defaultTimeoutMs, ctx)
   },
+}
+
+/** Pasta com repositorio proprio: raiz de repositorio ou de worktree, onde `.git` existe como diretorio ou arquivo. */
+export function isRepoRoot(dir: string): boolean {
+  return existsSync(join(dir, '.git'))
 }
 
 function runShell(command: string, cwd: string, timeoutMs: number, ctx: ToolContext): Promise<string> {
