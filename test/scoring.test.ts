@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { needsDelegation } from '../src/agents/routing.js'
-import { ScoringSchema, blendedCost, feedbackDelta, scoreAgents, type ScoreCandidate } from '../src/agents/scoring.js'
+import { ScoringSchema, blendedCost, callCost, feedbackDelta, scoreAgents, type ScoreCandidate } from '../src/agents/scoring.js'
 import type { ModelPrice } from '../src/cost/pricing.js'
 
 const prices: Record<string, ModelPrice> = {
@@ -143,5 +143,60 @@ describe('needsDelegation', () => {
   it('nao confunde com pedido de codigo que fala de paralelismo', () => {
     expect(needsDelegation('implementa o processamento em paralelo com worker threads')).toBe(false)
     expect(needsDelegation('corrige o teste que quebrou no CI')).toBe(false)
+  })
+})
+
+describe('pontuacao por contexto real', () => {
+  const grandes: Record<string, ModelPrice> = {
+    'x/saida-cara': { input: 1, output: 20 },
+    'x/entrada-cara': { input: 4, output: 2 },
+  }
+  const precoGrande = (provider: string, model: string) => grandes[`${provider}/${model}`] ?? null
+  const trio = [
+    candidate({ name: 'caro', provider: 'anthropic', model: 'opus', capabilities: { '*': 0.85, implementar: 0.85 } }),
+    candidate({ name: 'barato', provider: 'deepseek', model: 'flash', capabilities: { '*': 0.7, implementar: 0.8 } }),
+    candidate({ name: 'gratis', provider: 'ollama', model: 'qwen', capabilities: { '*': 0.35, explicar: 0.65 }, contextWindow: 8192, maxOutput: 4000 }),
+  ]
+
+  const dois = [
+    candidate({ name: 'saida-cara', provider: 'x', model: 'saida-cara', capabilities: { '*': 0.7 }, contextWindow: 1000000 }),
+    candidate({ name: 'entrada-cara', provider: 'x', model: 'entrada-cara', capabilities: { '*': 0.7 }, contextWindow: 1000000 }),
+  ]
+
+  it('pedido curto favorece quem cobra pouco na saida; contexto grande favorece quem cobra pouco na entrada', () => {
+    const curto = scoreAgents(dois, precoGrande, scoring, { intent: null, promptTokens: 200, contextTokens: 200 })
+    expect(curto.chosen?.agent).toBe('entrada-cara')
+    const longo = scoreAgents(dois, precoGrande, scoring, { intent: null, promptTokens: 200, contextTokens: 500000 })
+    expect(longo.chosen?.agent).toBe('saida-cara')
+    expect(longo.ranking[0]?.estimatedUsd).toBeCloseTo(0.524, 3)
+  })
+
+  it('penaliza quem vai encostar na janela e nao penaliza quem tem folga', () => {
+    const apertado = candidate({ name: 'apertado', provider: 'ollama', model: 'qwen', capabilities: { '*': 0.7 }, contextWindow: 20000, maxOutput: 4000 })
+    const folgado = candidate({ name: 'folgado', provider: 'ollama', model: 'qwen', capabilities: { '*': 0.7 }, contextWindow: 200000, maxOutput: 4000 })
+    const r = scoreAgents([apertado, folgado], priceOf, scoring, { intent: null, promptTokens: 100, contextTokens: 6000 })
+    expect(r.chosen?.agent).toBe('folgado')
+    expect(r.ranking.find((x) => x.agent === 'apertado')?.contextUse).toBeCloseTo(0.65, 2)
+    expect(r.ranking.find((x) => x.agent === 'folgado')?.score).toBeCloseTo(0.7, 4)
+    expect(r.ranking.find((x) => x.agent === 'apertado')?.score).toBeCloseTo(0.64, 4)
+  })
+
+  it('a exclusao por janela olha o contexto inteiro, nao so o pedido', () => {
+    const r = scoreAgents(trio, priceOf, scoring, { intent: "explicar", promptTokens: 100, contextTokens: 100000 })
+    expect(r.ranking.find((x) => x.agent === 'gratis')?.excluded).toContain('janela de 8192')
+  })
+
+  it('sem contexto informado, cai no tamanho do pedido', () => {
+    const r = scoreAgents(trio, priceOf, scoring, { intent: 'implementar', promptTokens: 100 })
+    expect(r.chosen?.agent).toBe('barato')
+  })
+})
+
+describe('callCost', () => {
+  it('soma entrada e saida pelo preco do modelo', () => {
+    expect(callCost({ input: 2, output: 12 }, 10000, 1000)).toBeCloseTo(0.032, 6)
+  })
+  it('devolve null quando falta preco', () => {
+    expect(callCost({ input: 2, output: null }, 100, 100)).toBeNull()
   })
 })
