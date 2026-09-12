@@ -8,6 +8,7 @@ export const RuleWhenSchema = z.object({
   workspace: z.string().optional(),
   intent: z.union([z.string(), z.array(z.string())]).optional(),
   files: z.array(z.string()).optional(),
+  keywords: z.array(z.string()).optional(),
   prompt_tokens_lt: z.number().int().positive().optional(),
   prompt_tokens_gt: z.number().int().nonnegative().optional(),
 })
@@ -169,6 +170,7 @@ function matches(when: RuleWhen, ctx: RouteContext, intent: string | null, token
     if (intent === null || !wanted.includes(intent)) return false
   }
   if (when.files && !when.files.some((g) => files.some((f) => matchesGlob(f, g) || matchesGlob(basename(f), g)))) return false
+  if (when.keywords && !when.keywords.some((k) => wordMatch(ctx.text.toLowerCase(), k.toLowerCase()))) return false
   if (when.prompt_tokens_lt !== undefined && !(tokens < when.prompt_tokens_lt)) return false
   if (when.prompt_tokens_gt !== undefined && !(tokens > when.prompt_tokens_gt)) return false
   return true
@@ -185,4 +187,9 @@ function pathsIn(text: string): string[] {
 
 function basename(p: string): string {
   return p.split('/').pop() ?? p
+}
+
+/** Regra de ativacao avaliada so com o texto e o workspace, para memoria do projeto e outros blocos sem intencao. */
+export function matchesWhen(when: RuleWhen, ctx: RouteContext, intent: string | null = null): boolean {
+  return matches(when, ctx, intent, approxTokens(ctx.text), pathsIn(ctx.text))
 }

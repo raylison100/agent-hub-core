@@ -179,6 +179,8 @@ export type ClientFrame =
   | { type: 'workspace.roots' }
   | { type: 'workspace.list'; path: string }
   | { type: 'workspace.find'; name: string }
+  | { type: 'context.list'; workspace: string }
+  | { type: 'context.delete'; workspace: string; file: string }
   | { type: 'feedback.set'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
   | { type: 'feedback.list'; session_id: string }
   | { type: 'feedback.summary' }
@@ -206,6 +208,7 @@ export type ServerFrame =
   | { type: 'workspace.roots'; roots: string[]; wsl_distro: string | null }
   | { type: 'workspace.list'; path: string; dirs: string[]; repo: boolean; repos: string[] }
   | { type: 'workspace.find'; name: string; paths: string[] }
+  | { type: 'context.list'; workspace: string; memories: ContextFile[]; specs: ContextFile[]; decisions: ContextFile[] }
   | { type: 'feedback.ok'; session_id: string; run_id: string; verdict: 'good' | 'bad' | 'none' }
   | { type: 'feedback.list'; session_id: string; items: { run_id: string; verdict: 'good' | 'bad' }[] }
   | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
@@ -281,6 +284,16 @@ export interface RoleSummary {
   models: string[]
   tools: string[]
   policy: string | null
+}
+
+export interface ContextFile {
+  name: string
+  file: string
+  bytes: number
+  description?: string
+  data?: string
+  run?: string
+  activate?: string
 }
 
 export interface SessionResumeRecord {

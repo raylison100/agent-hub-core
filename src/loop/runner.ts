@@ -48,6 +48,7 @@ export type RunEvent =
   | { type: 'compaction'; mode: 'prune' | 'summary'; before: number; after: number }
   | { type: 'max_output_retry'; reasoningTokens: number; maxOutput: number; reasoning: Reasoning }
   | { type: 'skills_loaded'; names: string[] }
+  | { type: 'workspace_context'; instructions: string[]; memories: string[]; tokens: number; ignored: { name: string; reason: string }[] }
   | {
       type: 'delegation'
       phase: 'start' | 'end'
@@ -100,6 +101,7 @@ export interface RunnerDeps {
   summarize?: Summarizer
   redact?: (text: string) => string
   preloadSkills?: Skill[]
+  workspaceContext?: string
   delegate?: (agent: string, task: string, opts: DelegationOptions) => Promise<DelegationResult>
   spawn?: (agent: string, task: string, opts: DelegationOptions) => Promise<SpawnHandle>
   collect?: (taskId: string | undefined, wait: boolean) => Promise<DelegationResult[]>
@@ -481,7 +483,7 @@ export class AgentRunner {
     if (def.name === 'plan' || def.name === 'done') return `registrado: ${String(args.summary).slice(0, 200)}`
     const tool = this.deps.tools.get(def.name)
     if (!tool) throw new Error(`ferramenta nao registrada: ${def.name}`)
-    return tool.handler(args, { workspace: this.deps.workspace, signal: this.deps.signal, sandbox: this.deps.sandbox })
+    return tool.handler(args, { workspace: this.deps.workspace, runId: this.hookCtx.runId, sessionId: this.hookCtx.sessionId, agent: this.deps.profile.name, signal: this.deps.signal, sandbox: this.deps.sandbox })
   }
 
   private async delegate(agent: string, task: string, opts: DelegationOptions): Promise<string> {
@@ -543,14 +545,17 @@ export class AgentRunner {
   }
 
   private systemPrompt(): string {
-    const { profile, skills } = this.deps
+    const { profile, skills, workspaceContext } = this.deps
     const available = profile.skills
       .map((n) => skills.get(n))
       .filter((s): s is Skill => s !== undefined)
       .sort((a, b) => a.name.localeCompare(b.name))
-    if (available.length === 0) return profile.system
-    const list = available.map((s) => `- ${s.name}: ${s.description}`).join('\n')
-    return `${profile.system}\n\nSkills disponiveis. Carregue com load_skill quando a tarefa pedir:\n${list}`
+    const blocos = [profile.system]
+    if (available.length > 0) {
+      blocos.push(`Skills disponiveis. Carregue com load_skill quando a tarefa pedir:\n${available.map((s) => `- ${s.name}: ${s.description}`).join('\n')}`)
+    }
+    if (workspaceContext) blocos.push(workspaceContext)
+    return blocos.join('\n\n')
   }
 
   /** Passo que estourou o teto sem escrever nada: o raciocinio comeu a saida, entao repete uma vez com teto maior e esforco menor. */

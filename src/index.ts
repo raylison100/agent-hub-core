@@ -56,6 +56,7 @@ export {
   activatedSkills,
   classifyIntent,
   classifierPrompt,
+  matchesWhen,
   improverAgent,
   improverPrompt,
   needsDelegation,
@@ -73,6 +74,18 @@ export {
 } from './agents/routing.js'
 export type { ImageInput, ImagePart } from './types.js'
 export { ResumeSchema, parseResume, renderResume, resumeJsonSchema, resumePrompt, resumeSystem, resumeTranscript, type SessionResume } from './agents/resume.js'
+export {
+  MemoryFrontmatterSchema,
+  contextDir,
+  decisionsDir,
+  loadMemories,
+  loadWorkspaceContext,
+  memoryDir,
+  specsDir,
+  type MemoryItem,
+  type WorkspaceContext,
+} from './agents/workspace-context.js'
+export { contextTools, listContextFiles } from './tools/context-files.js'
 export { ScoringSchema, blendedCost, feedbackDelta, scoreAgents, type ScoreCandidate, type ScoreInput, type ScoreResult, type ScoredAgent, type Scoring } from './agents/scoring.js'
 export {
   AgentRunner,

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, matchesGlob, relative } from 'node:path'
+import { contextTools } from './context-files.js'
 import type { RegisteredTool, ToolContext } from './registry.js'
 import { resolveInside } from './workspace.js'
 
@@ -11,7 +12,7 @@ const ignoredDirs = new Set(['node_modules', '.git', 'dist', 'vendor', '.next', 
 const gitAllowed = new Set(['status', 'diff', 'log', 'add', 'commit', 'branch', 'checkout', 'switch', 'stash', 'show'])
 
 export function nativeTools(): RegisteredTool[] {
-  return [listDir, readFile, search, writeFile, editFile, runCommand, git]
+  return [listDir, readFile, search, writeFile, editFile, runCommand, git, ...contextTools()]
 }
 
 const listDir: RegisteredTool = {

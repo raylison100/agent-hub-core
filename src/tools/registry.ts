@@ -9,6 +9,9 @@ export interface SandboxOptions {
 
 export interface ToolContext {
   workspace: string
+  runId?: string
+  sessionId?: string
+  agent?: string
   signal?: AbortSignal
   sandbox?: SandboxOptions
 }
