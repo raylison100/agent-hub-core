@@ -8,6 +8,7 @@ import { Budget } from '../src/cost/budget.js'
 import { Ledger } from '../src/cost/ledger.js'
 import { Pricing } from '../src/cost/pricing.js'
 import { AgentRunner, type RunEvent } from '../src/loop/runner.js'
+import { outputCap } from '../src/providers/index.js'
 import { nativeTools } from '../src/tools/native.js'
 import { ToolRegistry } from '../src/tools/registry.js'
 import type { ChatRequest, ChatResult, ProviderAdapter } from '../src/types.js'
@@ -147,5 +148,74 @@ describe('AgentRunner', () => {
     const result = await h.runner.run({ runId: 'r', sessionId: 's', history: [], userText: 'x' })
     expect(result.stop).toBe('budget_exceeded')
     expect(adapter.requests).toHaveLength(0)
+  })
+})
+
+describe('teto de saida com raciocinio', () => {
+  const vazio = {
+    message: { role: 'assistant' as const, parts: [{ type: 'text' as const, text: '' }] },
+    toolCalls: [],
+    stopReason: 'max_output' as const,
+    usage: { input: 135, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 8000, missing: false },
+  }
+
+  it('repete uma vez com teto maior e esforco menor quando o raciocinio come a saida', async () => {
+    const dir = workspaceWithFile()
+    const adapter = fakeAdapter([vazio])
+    const h = harness(adapter, dir)
+    const result = await h.runner.run({ runId: 'r', sessionId: 's', history: [], userText: 'crie um projeto novo' })
+    expect(result.stop).toBe('end')
+    expect(adapter.requests).toHaveLength(2)
+    expect(adapter.requests[0]?.maxOutput).toBe(8000)
+    expect(adapter.requests[0]?.reasoning).toBe('medium')
+    expect(adapter.requests[1]?.maxOutput).toBe(16000)
+    expect(adapter.requests[1]?.reasoning).toBe('low')
+    expect(adapter.requests[1]?.messages.at(-1)?.role).toBe('user')
+    expect(result.appended.some((m) => m.role === 'assistant' && m.parts.every((p) => p.type === 'text' && p.text === ''))).toBe(false)
+    const aviso = h.events.find((e) => e.type === 'max_output_retry')
+    expect(aviso && aviso.type === 'max_output_retry' && aviso.reasoningTokens).toBe(8000)
+  })
+
+  it('repete so uma vez e encerra em max_output se estourar de novo', async () => {
+    const dir = workspaceWithFile()
+    const adapter = fakeAdapter([vazio, vazio])
+    const h = harness(adapter, dir)
+    const result = await h.runner.run({ runId: 'r', sessionId: 's', history: [], userText: 'crie um projeto novo' })
+    expect(result.stop).toBe('max_output')
+    expect(adapter.requests).toHaveLength(2)
+    expect(h.events.filter((e) => e.type === 'max_output_retry')).toHaveLength(1)
+  })
+
+  it('nao repete quando o passo estourou o teto mas escreveu texto', async () => {
+    const dir = workspaceWithFile()
+    const adapter = fakeAdapter([{ ...vazio, message: { role: 'assistant', parts: [{ type: 'text', text: 'resposta cortada' }] } }])
+    const h = harness(adapter, dir)
+    const result = await h.runner.run({ runId: 'r', sessionId: 's', history: [], userText: 'x' })
+    expect(result.stop).toBe('max_output')
+    expect(adapter.requests).toHaveLength(1)
+  })
+
+  it('manda o orcamento de raciocinio declarado no perfil junto do teto', async () => {
+    const dir = workspaceWithFile()
+    const adapter = fakeAdapter([])
+    const h = harness(adapter, dir)
+    await h.runner.run({ runId: 'r', sessionId: 's', history: [], userText: 'x' })
+    expect(adapter.requests[0]?.reasoningBudget).toBe(0)
+  })
+})
+
+describe('outputCap', () => {
+  const base = { system: '', messages: [], tools: [], maxOutput: 16000, reasoningBudget: 16000, reasoning: 'medium' as const, systemCacheTtl: '5m' as const, providerOptions: {} }
+
+  it('soma o orcamento de raciocinio quando o modelo pensa', () => {
+    expect(outputCap(base, true)).toBe(32000)
+  })
+
+  it('mantem o teto do perfil quando o raciocinio esta desligado', () => {
+    expect(outputCap(base, false)).toBe(16000)
+  })
+
+  it('sem orcamento declarado, o teto nao muda', () => {
+    expect(outputCap({ ...base, reasoningBudget: undefined }, true)).toBe(16000)
   })
 })

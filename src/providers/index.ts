@@ -4,6 +4,7 @@ import { AnthropicAdapter } from './anthropic.js'
 import { OpenAICompatibleAdapter } from './openai-compatible.js'
 import { OpenAIResponsesAdapter } from './openai-responses.js'
 
+export { outputCap } from './cap.js'
 export { AnthropicAdapter, mapAnthropicUsage } from './anthropic.js'
 export { OpenAICompatibleAdapter, mapOpenAICompatibleUsage } from './openai-compatible.js'
 export { OpenAIResponsesAdapter, mapResponsesUsage, toInput as toResponsesInput, buildAssistant as buildResponsesAssistant } from './openai-responses.js'

@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { outputCap } from './cap.js'
 import type {
   Capabilities,
   ChatEvents,
@@ -92,6 +93,7 @@ export class OpenAIResponsesAdapter implements ProviderAdapter {
   }
 
   private buildParams(req: ChatRequest): Params {
+    const effort = this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]
     const params: Params = {
       model: this.model,
       instructions: req.system,
@@ -99,8 +101,8 @@ export class OpenAIResponsesAdapter implements ProviderAdapter {
       stream: true,
       store: false,
       include: ['reasoning.encrypted_content'],
-      max_output_tokens: req.maxOutput,
-      reasoning: { effort: (this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]) as OpenAI.Reasoning['effort'] },
+      max_output_tokens: outputCap(req, effort !== 'none'),
+      reasoning: { effort: effort as OpenAI.Reasoning['effort'] },
     }
     if (req.tools.length > 0) {
       params.tools = req.tools.map(toTool)

@@ -18,6 +18,7 @@ import type {
   Part,
   Policy,
   ProviderAdapter,
+  Reasoning,
   ToolCallPart,
   ToolDefinition,
   ToolResultPart,
@@ -45,6 +46,7 @@ export type RunEvent =
   | { type: 'budget_warning'; warning: BudgetWarning }
   | { type: 'escalation'; from: string; to: string; reason: string }
   | { type: 'compaction'; mode: 'prune' | 'summary'; before: number; after: number }
+  | { type: 'max_output_retry'; reasoningTokens: number; maxOutput: number; reasoning: Reasoning }
   | { type: 'skills_loaded'; names: string[] }
   | {
       type: 'delegation'
@@ -212,6 +214,9 @@ export class AgentRunner {
   private phaseIndex = 0
   private phaseSteps = 0
   private phasesDone = false
+  private outputBoost = 0
+  private loweredReasoning: Reasoning | null = null
+  private maxOutputRetried = false
 
   constructor(private readonly deps: RunnerDeps) {}
 
@@ -257,8 +262,9 @@ export class AgentRunner {
             system,
             messages,
             tools,
-            maxOutput: profile.max_output,
-            reasoning: profile.reasoning,
+            maxOutput: profile.max_output + this.outputBoost,
+            reasoningBudget: profile.reasoning_budget,
+            reasoning: this.loweredReasoning ?? profile.reasoning,
             systemCacheTtl: profile.cache.system_ttl,
             providerOptions: profile.provider_options,
             signal: this.deps.signal,
@@ -283,7 +289,15 @@ export class AgentRunner {
       sinceLast.push(result.message)
 
       if (result.stopReason === 'refusal') return this.finish('refusal', appended)
-      if (result.stopReason === 'max_output') return this.finish('max_output', appended)
+      if (result.stopReason === 'max_output') {
+        const retry = this.retryAfterMaxOutput(result)
+        if (!retry) return this.finish('max_output', appended)
+        for (const list of new Set([messages, appended, sinceLast])) {
+          if (list[list.length - 1] === result.message) list.pop()
+        }
+        emit({ type: 'max_output_retry', reasoningTokens: result.usage.reasoning, maxOutput: retry.maxOutput, reasoning: retry.reasoning })
+        continue
+      }
       if (result.stopReason !== 'tool' || result.toolCalls.length === 0) {
         const pending = this.deps.pendingSpawns?.() ?? 0
         if (pending === 0) return this.finish('end', appended)
@@ -539,9 +553,20 @@ export class AgentRunner {
     return `${profile.system}\n\nSkills disponiveis. Carregue com load_skill quando a tarefa pedir:\n${list}`
   }
 
+  /** Passo que estourou o teto sem escrever nada: o raciocinio comeu a saida, entao repete uma vez com teto maior e esforco menor. */
+  private retryAfterMaxOutput(result: ChatResult): { maxOutput: number; reasoning: Reasoning } | null {
+    const { profile } = this.deps
+    if (this.maxOutputRetried || result.toolCalls.length > 0) return null
+    if (result.message.parts.some((p) => p.type === 'text' && p.text.trim() !== '')) return null
+    this.maxOutputRetried = true
+    this.outputBoost = profile.max_output
+    this.loweredReasoning = lowerReasoning(this.loweredReasoning ?? profile.reasoning)
+    return { maxOutput: profile.max_output + this.outputBoost, reasoning: this.loweredReasoning }
+  }
+
   private checkBudget(estimatedInput: number): string | undefined {
     const { adapter, pricing, profile, budget, emit } = this.deps
-    const estimate: Usage = { input: estimatedInput, output: profile.max_output, cacheRead: 0, cacheWrite: 0, reasoning: 0, missing: false }
+    const estimate: Usage = { input: estimatedInput, output: profile.max_output + this.outputBoost, cacheRead: 0, cacheWrite: 0, reasoning: 0, missing: false }
     let estimatedUsd: number
     try {
       estimatedUsd = pricing.cost(adapter.provider, adapter.model, estimate)
@@ -624,3 +649,10 @@ function describe(err: unknown): string {
 }
 
 export { approxTokens }
+
+const nextLowerReasoning: Record<Reasoning, Reasoning> = { max: 'high', high: 'medium', medium: 'low', low: 'low' }
+
+/** Um degrau abaixo no esforco de raciocinio, para a repeticao sobrar espaco de resposta. */
+function lowerReasoning(current: Reasoning): Reasoning {
+  return nextLowerReasoning[current]
+}

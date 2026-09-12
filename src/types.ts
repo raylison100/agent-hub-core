@@ -65,6 +65,7 @@ export interface ChatRequest {
   messages: Message[]
   tools: ToolDefinition[]
   maxOutput: number
+  reasoningBudget?: number
   reasoning: Reasoning
   systemCacheTtl: '5m' | '1h'
   providerOptions: Record<string, unknown>

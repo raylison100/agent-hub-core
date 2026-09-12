@@ -7,6 +7,7 @@ export const ProfileFrontmatterSchema = z.object({
   model: z.string().min(1),
   reasoning: z.enum(['low', 'medium', 'high', 'max']).default('medium'),
   max_output: z.number().int().positive().default(8000),
+  reasoning_budget: z.number().int().nonnegative().default(0),
   max_steps: z.number().int().positive().default(30),
   tools: z
     .object({

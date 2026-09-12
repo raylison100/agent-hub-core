@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { outputCap } from './cap.js'
 import type {
   Capabilities,
   ChatEvents,
@@ -137,21 +138,32 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       stream: true,
       stream_options: { include_usage: true },
     }
-    if (this.opts.useMaxCompletionTokens) params.max_completion_tokens = req.maxOutput
-    else params.max_tokens = req.maxOutput
+    const cap = outputCap(req, this.thinking(req))
+    if (this.opts.useMaxCompletionTokens) params.max_completion_tokens = cap
+    else params.max_tokens = cap
     if (req.tools.length > 0) {
       params.tools = req.tools.map(toTool)
       params.tool_choice = 'auto'
     }
-    if (this.opts.sendReasoningEffort) {
-      let effort = this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]
-      if (this.opts.effortCap === 'high' && (effort === 'xhigh' || effort === 'max')) effort = 'high'
-      if (this.opts.noEffortWithTools && req.tools.length > 0) effort = 'none'
-      params.reasoning_effort = effort as ChatParams['reasoning_effort']
-    }
+    if (this.opts.sendReasoningEffort) params.reasoning_effort = this.effort(req) as ChatParams['reasoning_effort']
     if (this.opts.temperature !== undefined) params.temperature = this.opts.temperature
     if (this.opts.seed !== undefined) params.seed = this.opts.seed
     return Object.assign(params, this.deepseekParams(req.reasoning), this.opts.extraBody ?? {})
+  }
+
+  /** Esforco de raciocinio efetivo: teto do Gemini e a regra da OpenAI de desligar quando a chamada leva ferramentas. */
+  private effort(req: ChatRequest): OpenAIEffort {
+    let effort = (this.opts.reasoningEffortOverride ?? effortByReasoning[req.reasoning]) as OpenAIEffort
+    if (this.opts.effortCap === 'high' && (effort === 'xhigh' || effort === 'max')) effort = 'high'
+    if (this.opts.noEffortWithTools && req.tools.length > 0) effort = 'none'
+    return effort
+  }
+
+  /** Se o modelo vai pensar nesta chamada, os tokens de pensamento saem do mesmo teto e o orcamento reservado entra. */
+  private thinking(req: ChatRequest): boolean {
+    if (this.opts.deepseekThinking) return req.reasoning !== 'low'
+    if (this.opts.sendReasoningEffort) return this.effort(req) !== 'none'
+    return this.opts.extraBody?.reasoning_effort !== 'none'
   }
 
   /** DeepSeek V4: raciocinio ligado por `thinking` e `reasoning_effort`; `low` no perfil desliga o raciocinio. */

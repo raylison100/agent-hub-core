@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { outputCap } from './cap.js'
 import type {
   Capabilities,
   ChatEvents,
@@ -78,7 +79,7 @@ export class AnthropicAdapter implements ProviderAdapter {
   private buildParams(req: ChatRequest): StreamParams {
     const params: StreamParams = {
       model: this.model,
-      max_tokens: req.maxOutput,
+      max_tokens: outputCap(req, true),
       system: toSystem(req),
       tools: toTools(req.tools, req.systemCacheTtl),
       messages: toMessages(req.messages),
