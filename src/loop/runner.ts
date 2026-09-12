@@ -50,6 +50,7 @@ export type RunEvent =
   | { type: 'skills_loaded'; names: string[] }
   | { type: 'workspace_context'; instructions: string[]; memories: string[]; tokens: number; ignored: { name: string; reason: string }[] }
   | { type: 'knowledge_indexed'; files: number; chunks: number; ignored: string[] }
+  | { type: 'mcp_skipped'; servers: { name: string; reason: string }[] }
   | {
       type: 'delegation'
       phase: 'start' | 'end'
