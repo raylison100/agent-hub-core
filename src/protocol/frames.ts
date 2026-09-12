@@ -1,3 +1,4 @@
+import type { SessionResume } from '../agents/resume.js'
 import type { WorkflowSummary } from '../agents/workflows.js'
 import type { RunEvent } from '../loop/runner.js'
 import type { Decision, Message } from '../types.js'
@@ -118,6 +119,7 @@ export type ClientFrame =
   | { type: 'session.delete_many'; session_ids: string[] }
   | { type: 'session.delete'; session_id: string }
   | { type: 'session.fork'; session_id: string }
+  | { type: 'session.resume'; session_id: string }
   | {
       type: 'run.start'
       session_id: string
@@ -194,9 +196,10 @@ export type ServerFrame =
   | { type: 'session.created'; session: SessionSummary; routed?: { intent: string | null; rule: unknown } }
   | { type: 'budget.overridden'; run_id: string; scope: string; limit_usd: number }
   | { type: 'session.list'; sessions: SessionSummary[] }
-  | { type: 'session.get'; session: SessionSummary; messages: Message[]; children: { run_id: string; parent_run_id: string; agent: string; messages: Message[] }[] }
+  | { type: 'session.get'; session: SessionSummary; messages: Message[]; children: { run_id: string; parent_run_id: string; agent: string; messages: Message[] }[]; resume: SessionResumeRecord | null }
   | { type: 'session.updated'; session: SessionSummary }
   | { type: 'session.deleted'; session_id: string }
+  | { type: 'session.resume'; session_id: string; resume: SessionResumeRecord | null }
   | { type: 'session.deleted_many'; session_ids: string[] }
   | { type: 'run.started'; run_id: string; session_id: string }
   | { type: 'routing.info'; default_agent: string | null; improver: string | null; classifier: string | null }
@@ -278,4 +281,12 @@ export interface RoleSummary {
   models: string[]
   tools: string[]
   policy: string | null
+}
+
+export interface SessionResumeRecord {
+  sessionId: string
+  runId: string | null
+  resume: SessionResume
+  text: string
+  createdAt: number
 }
