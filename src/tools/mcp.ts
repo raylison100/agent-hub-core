@@ -41,7 +41,7 @@ export class McpBridge {
   constructor(private readonly env: NodeJS.ProcessEnv = process.env) {}
 
   /** Conecta a um servidor MCP por stdio ou HTTP e registra suas ferramentas com prefixo `servidor__`. */
-  async connect(name: string, config: McpServerConfig, bearer?: string): Promise<RegisteredTool[]> {
+  async connect(name: string, config: McpServerConfig, bearer?: string, onClose?: (name: string) => void): Promise<RegisteredTool[]> {
     const existing = this.servers.get(name)
     if (existing) return existing.tools
     const transport = config.url
@@ -58,6 +58,10 @@ export class McpBridge {
     const listed = (await client.listTools()) as { tools: McpToolInfo[] }
     const tools = listed.tools.map((t) => this.wrap(name, config, client, t))
     this.servers.set(name, { client, tools })
+    transport.onclose = () => {
+      this.servers.delete(name)
+      onClose?.(name)
+    }
     return tools
   }
 
