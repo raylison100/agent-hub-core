@@ -191,6 +191,8 @@ export type ClientFrame =
   | { type: 'feedback.summary' }
   | { type: 'stats.overview'; days?: number }
   | { type: 'health.list' }
+  | { type: 'daemon.reload' }
+  | { type: 'daemon.restart' }
   | { type: 'hooks.list' }
   | { type: 'hooks.toggle'; id: string; enabled: boolean }
   | { type: 'term.open'; session_id: string; cols: number; rows: number; term_id?: string }
@@ -224,6 +226,7 @@ export type ServerFrame =
   | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
   | { type: 'stats.overview'; stats: StatsOverview }
   | { type: 'health.list'; items: HealthItem[] }
+  | { type: 'daemon.status'; supervisionado: boolean; reiniciando: boolean; detalhe: string }
   | { type: 'hooks.list'; catalog: HookCatalogItem[]; extras: number }
   | { type: 'term.opened'; term_id: string; session_id: string; cwd: string; buffer: string }
   | { type: 'term.data'; term_id: string; data: string }

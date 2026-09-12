@@ -9,6 +9,7 @@ import type { HookContext, HookRunner } from '../hooks/runner.js'
 import type { ScoredAgent } from '../agents/scoring.js'
 import { decide } from '../tools/policy.js'
 import type { SandboxOptions, ToolRegistry } from '../tools/registry.js'
+import { selectTools } from '../tools/select.js'
 import { validateCall } from '../tools/validate.js'
 import type {
   ChatResult,
@@ -51,6 +52,7 @@ export type RunEvent =
   | { type: 'workspace_context'; instructions: string[]; memories: string[]; tokens: number; ignored: { name: string; reason: string }[] }
   | { type: 'knowledge_indexed'; files: number; chunks: number; ignored: string[] }
   | { type: 'mcp_skipped'; servers: { name: string; reason: string }[] }
+  | { type: 'tools_selected'; kept: number; dropped: number; tokens: number; budget: number }
   | {
       type: 'delegation'
       phase: 'start' | 'end'
@@ -228,7 +230,9 @@ export class AgentRunner {
     const { profile, emit } = this.deps
     this.hookCtx = { sessionId: input.sessionId, runId: input.runId, agent: profile.name, workspace: this.deps.workspace }
     const baseSystem = this.systemPrompt()
-    const allTools = this.toolDefinitions()
+    const escolha = selectTools(this.toolDefinitions(), input.userText, profile.context.window)
+    const allTools = escolha.tools
+    if (escolha.dropped > 0) emit({ type: 'tools_selected', kept: allTools.length, dropped: escolha.dropped, tokens: escolha.used, budget: escolha.budget })
     this.announcePhase(allTools)
     const userMessage = this.userMessage(input.userText, input.images)
     let appended: Message[] = [userMessage]
@@ -473,8 +477,15 @@ export class AgentRunner {
     return hooks.after(this.hookCtx, tool, args, result)
   }
 
+  /** Redige segredo e corta o que nao cabe: resultado gigante em janela pequena mata o run no passo seguinte. */
   private clean(text: string): string {
-    return this.deps.redact ? this.deps.redact(text) : text
+    const limpo = this.deps.redact ? this.deps.redact(text) : text
+    return capToolResult(limpo, this.toolResultCap())
+  }
+
+  /** Teto do resultado de uma ferramenta: um quarto da janela do modelo, nunca mais que 4000 tokens. */
+  private toolResultCap(): number {
+    return Math.max(400, Math.min(4000, Math.floor(this.deps.profile.context.window * 0.25)))
   }
 
   private async invoke(def: ToolDefinition, args: Record<string, unknown>): Promise<string> {
@@ -662,4 +673,12 @@ const nextLowerReasoning: Record<Reasoning, Reasoning> = { max: 'high', high: 'm
 /** Um degrau abaixo no esforco de raciocinio, para a repeticao sobrar espaco de resposta. */
 function lowerReasoning(current: Reasoning): Reasoning {
   return nextLowerReasoning[current]
+}
+
+/** Corta o resultado no teto de tokens, dizendo ao modelo que foi cortado e como pedir menos da proxima vez. */
+export function capToolResult(text: string, maxTokens: number): string {
+  const limite = maxTokens * 4
+  if (text.length <= limite) return text
+  const cortado = text.slice(0, limite)
+  return `${cortado}\n[resultado cortado em ~${maxTokens} tokens de ${approxTokens(text)}. Peca menos itens, use filtro ou paginacao para ver o resto.]`
 }

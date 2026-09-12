@@ -55,6 +55,7 @@ export {
   type OAuthTokens,
 } from './tools/oauth.js'
 export { validateCall, type ValidationResult } from './tools/validate.js'
+export { selectTools, toolTokens, type ToolSelection } from './tools/select.js'
 export { decide, defaultPolicy, isDestructive, riskFor } from './tools/policy.js'
 export { resolveInside, OutsideWorkspaceError } from './tools/workspace.js'
 export { approxTokens, approxMessageTokens, estimateNextInput } from './context/estimate.js'
