@@ -49,6 +49,7 @@ export type RunEvent =
   | { type: 'max_output_retry'; reasoningTokens: number; maxOutput: number; reasoning: Reasoning }
   | { type: 'skills_loaded'; names: string[] }
   | { type: 'workspace_context'; instructions: string[]; memories: string[]; tokens: number; ignored: { name: string; reason: string }[] }
+  | { type: 'knowledge_indexed'; files: number; chunks: number; ignored: string[] }
   | {
       type: 'delegation'
       phase: 'start' | 'end'

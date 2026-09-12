@@ -86,6 +86,9 @@ export {
   type WorkspaceContext,
 } from './agents/workspace-context.js'
 export { contextTools, listContextFiles } from './tools/context-files.js'
+export { KnowledgeStore, knowledgeDir, type KnowledgeHit, type IndexResult } from './knowledge/store.js'
+export { knowledgeTool } from './knowledge/tool.js'
+export { chunkText, type Chunk } from './knowledge/chunk.js'
 export { ScoringSchema, blendedCost, feedbackDelta, scoreAgents, type ScoreCandidate, type ScoreInput, type ScoreResult, type ScoredAgent, type Scoring } from './agents/scoring.js'
 export {
   AgentRunner,

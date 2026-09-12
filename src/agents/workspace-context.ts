@@ -92,6 +92,19 @@ export function loadWorkspaceContext(workspace: string, opts: ContextOptions): W
     break
   }
 
+  const glossario = join(workspace, `${contextDir}/glossario.md`)
+  if (existsSync(glossario)) {
+    const conteudo = readFileSync(glossario, 'utf8').trim()
+    const custo = approxTokens(conteudo)
+    if (conteudo && usados + custo <= teto) {
+      usados += custo
+      out.instructions.push({ file: `${contextDir}/glossario.md`, tokens: custo })
+      blocos.push(`<glossario_do_projeto>\nTermos deste dominio. Use as palavras do time, nao sinonimos seus.\n${conteudo}\n</glossario_do_projeto>`)
+    } else if (conteudo) {
+      out.ignored.push({ name: 'glossario.md', reason: `passaria do teto de ${teto} tokens` })
+    }
+  }
+
   const ativas = loadMemories(workspace)
     .filter((m) => {
       if (!m.activate) return true
