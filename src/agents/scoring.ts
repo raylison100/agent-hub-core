@@ -26,12 +26,14 @@ export interface ScoreCandidate {
   contextWindow: number
   maxOutput: number
   vision?: boolean
+  delegates?: boolean
 }
 
 export interface ScoreInput {
   intent: string | null
   promptTokens: number
   needsVision?: boolean
+  needsDelegation?: boolean
   unavailable?: (name: string) => string | null
   adjustments?: Record<string, number>
 }
@@ -109,6 +111,7 @@ function exclusionReason(
 ): string | undefined {
   if (scoring.exclude.includes(c.name)) return 'excluido em routing.json'
   if (input.needsVision && !c.vision) return 'nao le imagens'
+  if (input.needsDelegation && !c.delegates) return 'nao delega subtarefas'
   const unavailable = input.unavailable?.(c.name)
   if (unavailable) return unavailable
   if (capability === undefined) return `sem capacidade declarada para ${input.intent ?? 'intencao desconhecida'}`

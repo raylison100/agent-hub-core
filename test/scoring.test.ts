@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { needsDelegation } from '../src/agents/routing.js'
 import { ScoringSchema, blendedCost, feedbackDelta, scoreAgents, type ScoreCandidate } from '../src/agents/scoring.js'
 import type { ModelPrice } from '../src/cost/pricing.js'
 
@@ -116,5 +117,31 @@ describe('scoreAgents', () => {
     const r = scoreAgents(base, priceOf, ScoringSchema.parse({ exclude: ['barato'] }), { intent: 'implementar', promptTokens: 100 })
     expect(r.ranking.find((x) => x.agent === 'barato')?.excluded).toContain('excluido')
     expect(r.chosen?.agent).toBe('caro')
+  })
+
+  it('pedido de subagente exclui quem nao delega', () => {
+    const comDelegacao = [
+      candidate({ name: 'caro', provider: 'anthropic', model: 'opus', capabilities: { '*': 0.85 }, delegates: true }),
+      candidate({ name: 'barato', provider: 'deepseek', model: 'flash', capabilities: { '*': 0.7 } }),
+    ]
+    const semPedido = scoreAgents(comDelegacao, priceOf, scoring, { intent: null, promptTokens: 100 })
+    expect(semPedido.chosen?.agent).toBe('barato')
+    const r = scoreAgents(comDelegacao, priceOf, scoring, { intent: null, promptTokens: 100, needsDelegation: true })
+    expect(r.ranking.find((x) => x.agent === 'barato')?.excluded).toBe('nao delega subtarefas')
+    expect(r.chosen?.agent).toBe('caro')
+  })
+})
+
+describe('needsDelegation', () => {
+  it('reconhece pedido de subagente, delegacao e agentes em paralelo', () => {
+    expect(needsDelegation('faz um teste de subagentes para eu ver como vc trabalha')).toBe(true)
+    expect(needsDelegation('delegue a leitura dos arquivos e junte as respostas')).toBe(true)
+    expect(needsDelegation('roda dois agentes em paralelo nessa tarefa')).toBe(true)
+    expect(needsDelegation('usa worktree para nao mexer nos meus arquivos')).toBe(true)
+  })
+
+  it('nao confunde com pedido de codigo que fala de paralelismo', () => {
+    expect(needsDelegation('implementa o processamento em paralelo com worker threads')).toBe(false)
+    expect(needsDelegation('corrige o teste que quebrou no CI')).toBe(false)
   })
 })

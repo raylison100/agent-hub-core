@@ -117,6 +117,21 @@ export function classifyIntent(text: string, intents: Record<string, string[]>):
   return null
 }
 
+const delegationHints = [
+  /sub-?agentes?/i,
+  /\bdeleg(ar|ue|ue-se|a|ando|acao|ação)\b/i,
+  /\b(varios|v[áa]rios|multiplos|m[úu]ltiplos|outro|outros|dois|tr[êe]s)\s+agentes?\b/i,
+  /\bagentes?\s+em\s+paralelo\b/i,
+  /\bspawn\b/i,
+  /\bworktrees?\b/i,
+  /\bdividir\s+(a\s+tarefa|o\s+trabalho)\b/i,
+]
+
+/** Pedido que fala em subagente, delegacao ou agentes trabalhando em paralelo: quem nao delega nao serve. */
+export function needsDelegation(text: string): boolean {
+  return delegationHints.some((r) => r.test(text))
+}
+
 /** Primeira regra que casa decide o agente. Sem regra casando, devolve null. `intentOverride` vem do classificador por modelo. */
 export function route(routing: Routing, ctx: RouteContext, intentOverride?: string | null): RouteResult | null {
   const intent = intentOverride === undefined ? classifyIntent(ctx.text, routing.intents) : intentOverride

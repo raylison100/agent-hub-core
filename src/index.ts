@@ -52,6 +52,7 @@ export {
   classifyIntent,
   classifierPrompt,
   improverPrompt,
+  needsDelegation,
   parseClassifierAnswer,
   type PromptImprover,
   emptyRouting,
