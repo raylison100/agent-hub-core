@@ -111,6 +111,10 @@ export interface StatsOverview {
 
 export type ClientFrame =
   | { type: 'auth'; token: string; protocol_version: number; client: string }
+  | { type: 'auth.login'; password: string; device_name: string; protocol_version: number; client: string }
+  | { type: 'auth.password'; password: string }
+  | { type: 'auth.devices' }
+  | { type: 'auth.revoke'; device_id: string }
   | { type: 'session.create'; agent?: string; role?: string; workspace: string; title?: string; text?: string }
   | { type: 'session.list'; limit?: number; include_archived?: boolean }
   | { type: 'session.get'; session_id: string }
@@ -196,7 +200,9 @@ export type ClientFrame =
   | { type: 'tasks.list'; session_id?: string }
 
 export type ServerFrame =
-  | { type: 'auth.ok'; protocol_version: number; device: string }
+  | { type: 'auth.ok'; protocol_version: number; device: string; senha_definida?: boolean }
+  | { type: 'auth.credential'; credential: string; device_id: string; device: string }
+  | { type: 'auth.devices'; devices: DeviceSummary[]; senha_definida: boolean }
   | { type: 'auth.error'; message: string }
   | { type: 'error'; message: string; ref?: string }
   | { type: 'session.created'; session: SessionSummary; routed?: { intent: string | null; rule: unknown } }
@@ -313,6 +319,13 @@ export interface HookCatalogItem {
   event: string
   tool?: string
   enabled: boolean
+}
+
+export interface DeviceSummary {
+  id: string
+  name: string
+  createdAt: number
+  lastSeen: number | null
 }
 export interface HealthItem {
   level: 'ok' | 'aviso' | 'erro'
