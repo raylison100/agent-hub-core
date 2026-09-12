@@ -166,6 +166,7 @@ export type ClientFrame =
   | { type: 'push.test' }
   | { type: 'workflow.list' }
   | { type: 'workflow.run'; name: string; inputs: Record<string, string>; workspace: string }
+  | { type: 'workflow.resume'; run_id: string }
   | { type: 'secrets.list' }
   | { type: 'secrets.set'; name: string; value: string }
   | { type: 'secrets.delete'; name: string }
@@ -185,6 +186,9 @@ export type ClientFrame =
   | { type: 'feedback.list'; session_id: string }
   | { type: 'feedback.summary' }
   | { type: 'stats.overview'; days?: number }
+  | { type: 'health.list' }
+  | { type: 'hooks.list' }
+  | { type: 'hooks.toggle'; id: string; enabled: boolean }
   | { type: 'term.open'; session_id: string; cols: number; rows: number; term_id?: string }
   | { type: 'term.input'; term_id: string; data: string }
   | { type: 'term.resize'; term_id: string; cols: number; rows: number }
@@ -213,6 +217,8 @@ export type ServerFrame =
   | { type: 'feedback.list'; session_id: string; items: { run_id: string; verdict: 'good' | 'bad' }[] }
   | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
   | { type: 'stats.overview'; stats: StatsOverview }
+  | { type: 'health.list'; items: HealthItem[] }
+  | { type: 'hooks.list'; catalog: HookCatalogItem[]; extras: number }
   | { type: 'term.opened'; term_id: string; session_id: string; cwd: string; buffer: string }
   | { type: 'term.data'; term_id: string; data: string }
   | { type: 'term.exit'; term_id: string; code: number }
@@ -249,10 +255,10 @@ export type ServerFrame =
   | { type: 'mcp.resource.read'; server: string; uri: string; text: string }
   | { type: 'mcp.prompts'; server: string; prompts: { name: string; description?: string; arguments?: { name: string; required?: boolean }[] }[] }
   | { type: 'mcp.prompt.get'; server: string; name: string; text: string }
-  | { type: 'workflow.list'; workflows: WorkflowSummary[] }
+  | { type: 'workflow.list'; workflows: WorkflowSummary[]; pending: WorkflowRunState[] }
   | { type: 'workflow.started'; name: string; session_id: string; run_id: string; max_cost_usd: number | null }
   | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry' | 'escalated'; ms?: number; cost_usd?: number; detail?: string }
-  | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded' | 'escalated'; cost_usd: number; outputs: Record<string, unknown>; error?: string }
+  | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded' | 'escalated'; cost_usd: number; outputs: Record<string, unknown>; error?: string; resumable?: boolean }
   | { type: 'secrets.list'; secrets: { name: string; hint: string; length: number; updated_at: number; source: 'db' | 'env' }[] }
   | { type: 'fs.list'; path: string; entries: { name: string; dir: boolean }[] }
   | { type: 'fs.read'; path: string; text: string; truncated: boolean }
@@ -284,6 +290,35 @@ export interface RoleSummary {
   models: string[]
   tools: string[]
   policy: string | null
+}
+
+
+export interface WorkflowRunState {
+  runId: string
+  name: string
+  sessionId: string
+  workspace: string
+  context: Record<string, unknown>
+  nextStep?: string
+  status: string
+  costUsd: number
+  updatedAt: number
+}
+
+export interface HookCatalogItem {
+  id: string
+  title: string
+  detail: string
+  event: string
+  tool?: string
+  enabled: boolean
+}
+export interface HealthItem {
+  level: 'ok' | 'aviso' | 'erro'
+  title: string
+  detail: string
+  action: string
+  route?: string
 }
 
 export interface ContextFile {

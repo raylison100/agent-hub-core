@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { resolve } from 'node:path'
 import { z } from 'zod'
 
 export const HookEventSchema = z.enum(['run.start', 'tool.before', 'tool.after', 'run.end', 'budget.exceeded'])
@@ -138,7 +139,7 @@ export class HookRunner {
 
   private exec(hook: HookConfig, ctx: HookContext, payload: Record<string, unknown>): Promise<ExecResult> {
     return new Promise((resolve, reject) => {
-      const child = spawn(hook.command, { shell: true, cwd: hook.cwd ?? ctx.workspace, env: process.env })
+      const child = spawn(hook.command, { shell: true, cwd: hook.cwd ?? ctx.workspace, env: { ...process.env, ...hookEnv(ctx, payload) } })
       const out: Buffer[] = []
       const err: Buffer[] = []
       const timer = setTimeout(() => {
@@ -190,4 +191,27 @@ function parseJson(text: string): Record<string, unknown> | null {
 
 function describe(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
+}
+
+/** Alem do JSON no stdin, o gancho recebe os campos mais usados em variaveis de ambiente, para caber em uma linha de shell. */
+function hookEnv(ctx: HookContext, payload: Record<string, unknown>): Record<string, string> {
+  const env: Record<string, string> = {
+    AGENT_HUB_SESSION_ID: ctx.sessionId,
+    AGENT_HUB_RUN_ID: ctx.runId,
+    AGENT_HUB_AGENT: ctx.agent,
+    AGENT_HUB_WORKSPACE: ctx.workspace,
+  }
+  const texto = (v: unknown): string => (typeof v === 'string' ? v : v === undefined ? '' : JSON.stringify(v))
+  if (payload.event !== undefined) env.AGENT_HUB_EVENT = texto(payload.event)
+  if (payload.tool !== undefined) env.AGENT_HUB_TOOL = texto(payload.tool)
+  if (payload.args !== undefined) {
+    env.AGENT_HUB_TOOL_ARGS = texto(payload.args)
+    const args = payload.args as Record<string, unknown>
+    const caminho = typeof args.path === 'string' ? args.path : undefined
+    if (caminho) env.AGENT_HUB_TOOL_PATH = resolve(ctx.workspace, caminho)
+  }
+  if (payload.stop !== undefined) env.AGENT_HUB_STOP = texto(payload.stop)
+  if (payload.cost_usd !== undefined) env.AGENT_HUB_COST_USD = texto(payload.cost_usd)
+  if (payload.message !== undefined) env.AGENT_HUB_MESSAGE = texto(payload.message)
+  return env
 }

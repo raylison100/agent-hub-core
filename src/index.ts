@@ -113,6 +113,7 @@ export {
   type HookDecision,
   type HookEvent,
 } from './hooks/runner.js'
+export { hookCatalog, type CatalogHook } from './hooks/catalog.js'
 export {
   loadPlugin,
   loadPlugins,
