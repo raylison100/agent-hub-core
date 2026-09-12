@@ -216,3 +216,24 @@ describe('improverAgent', () => {
     expect(improverAgent(PromptImproverSchema.parse({ agent: 'qwen3' }), 'x'.repeat(5000))).toBe('qwen3')
   })
 })
+
+describe('classe de latencia', () => {
+  const dupla = [
+    candidate({ name: 'rapido', provider: 'deepseek', model: 'flash', capabilities: { '*': 0.7 } }),
+    candidate({ name: 'lento', provider: 'ollama', model: 'qwen', capabilities: { '*': 0.6 }, latency: 'lote' }),
+  ]
+
+  it('pedido interativo exclui quem so serve para lote', () => {
+    const r = scoreAgents(dupla, priceOf, scoring, { intent: null, promptTokens: 100 })
+    expect(r.ranking.find((x) => x.agent === 'lento')?.excluded).toBe('so serve para tarefa em lote')
+    expect(r.chosen?.agent).toBe('rapido')
+  })
+
+  it('em lote o gratuito entra e o custo pesa mais', () => {
+    const r = scoreAgents(dupla, priceOf, scoring, { intent: null, promptTokens: 100, latency: 'lote' })
+    expect(r.chosen?.agent).toBe('lento')
+    const interativo = scoreAgents([dupla[0]!], priceOf, scoring, { intent: null, promptTokens: 100 })
+    const lote = scoreAgents([dupla[0]!], priceOf, scoring, { intent: null, promptTokens: 100, latency: 'lote' })
+    expect(lote.chosen!.score).toBeLessThan(interativo.chosen!.score)
+  })
+})

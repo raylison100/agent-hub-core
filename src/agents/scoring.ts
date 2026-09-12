@@ -3,6 +3,7 @@ import type { ModelPrice } from '../cost/pricing.js'
 
 export const ScoringSchema = z.object({
   cost_weight: z.number().min(0).max(1).default(0.5),
+  batch_cost_weight: z.number().min(0).max(1).default(0.85),
   context_weight: z.number().min(0).max(1).default(0.2),
   expected_output_tokens: z.number().int().positive().default(1200),
   min_capability: z.number().min(0).max(1).default(0.5),
@@ -29,6 +30,7 @@ export interface ScoreCandidate {
   maxOutput: number
   vision?: boolean
   delegates?: boolean
+  latency?: 'interativo' | 'lote' | 'ambos'
 }
 
 export interface ScoreInput {
@@ -37,6 +39,7 @@ export interface ScoreInput {
   contextTokens?: number
   needsVision?: boolean
   needsDelegation?: boolean
+  latency?: 'interativo' | 'lote'
   unavailable?: (name: string) => string | null
   adjustments?: Record<string, number>
 }
@@ -91,7 +94,8 @@ export function scoreAgents(
   const maxCost = Math.max(0, ...eligible.map((r) => Math.log1p(perMillion(r))))
   for (const r of eligible) {
     const costNorm = maxCost > 0 ? Math.log1p(perMillion(r)) / maxCost : 0
-    r.score = round(r.capability - scoring.cost_weight * costNorm - scoring.context_weight * pressure(r.contextUse))
+    const peso = input.latency === 'lote' ? scoring.batch_cost_weight : scoring.cost_weight
+    r.score = round(r.capability - peso * costNorm - scoring.context_weight * pressure(r.contextUse))
   }
   eligible.sort(byScore)
   const excluded = rows.filter((r) => r.excluded !== undefined).sort((a, b) => a.agent.localeCompare(b.agent))
@@ -146,6 +150,7 @@ function exclusionReason(
   if (scoring.exclude.includes(c.name)) return 'excluido em routing.json'
   if (input.needsVision && !c.vision) return 'nao le imagens'
   if (input.needsDelegation && !c.delegates) return 'nao delega subtarefas'
+  if ((input.latency ?? 'interativo') === 'interativo' && c.latency === 'lote') return 'so serve para tarefa em lote'
   const unavailable = input.unavailable?.(c.name)
   if (unavailable) return unavailable
   if (capability === undefined) return `sem capacidade declarada para ${input.intent ?? 'intencao desconhecida'}`

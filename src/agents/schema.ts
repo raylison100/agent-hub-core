@@ -42,8 +42,9 @@ export const ProfileFrontmatterSchema = z.object({
       capabilities: z.record(z.string(), z.number().min(0).max(1)).default({}),
       max_prompt_tokens: z.number().int().positive().optional(),
       vision: z.boolean().default(false),
+      latency: z.enum(['interativo', 'lote', 'ambos']).default('ambos'),
     })
-    .default({ capabilities: {}, vision: false }),
+    .default({ capabilities: {}, vision: false, latency: 'ambos' }),
   sandbox: z
     .object({
       image: z.string().min(1),
