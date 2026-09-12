@@ -41,12 +41,12 @@ export class McpBridge {
   constructor(private readonly env: NodeJS.ProcessEnv = process.env) {}
 
   /** Conecta a um servidor MCP por stdio ou HTTP e registra suas ferramentas com prefixo `servidor__`. */
-  async connect(name: string, config: McpServerConfig): Promise<RegisteredTool[]> {
+  async connect(name: string, config: McpServerConfig, bearer?: string): Promise<RegisteredTool[]> {
     const existing = this.servers.get(name)
     if (existing) return existing.tools
     const transport = config.url
       ? new StreamableHTTPClientTransport(new URL(config.url), {
-          requestInit: { headers: resolveEnv(config.headers, this.env) },
+          requestInit: { headers: { ...resolveEnv(config.headers, this.env), ...(bearer ? { authorization: `Bearer ${bearer}` } : {}) } },
         })
       : new StdioClientTransport({
           command: config.command!,

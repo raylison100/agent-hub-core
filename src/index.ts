@@ -43,6 +43,17 @@ export {
 export { ToolRegistry, type RegisteredTool, type SandboxOptions, type ToolContext, type ToolHandler } from './tools/registry.js'
 export { isRepoRoot, nativeTools, sandboxCommand } from './tools/native.js'
 export { McpBridge, type McpPromptInfo, type McpResourceInfo } from './tools/mcp.js'
+export {
+  authorizationUrl,
+  discover,
+  exchange,
+  expired,
+  pkce,
+  registerClient,
+  resourceMetadataUrl,
+  type OAuthConfig,
+  type OAuthTokens,
+} from './tools/oauth.js'
 export { validateCall, type ValidationResult } from './tools/validate.js'
 export { decide, defaultPolicy, isDestructive, riskFor } from './tools/policy.js'
 export { resolveInside, OutsideWorkspaceError } from './tools/workspace.js'

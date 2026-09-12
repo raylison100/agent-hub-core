@@ -247,8 +247,9 @@ export type ServerFrame =
   | { type: 'automation.runs'; runs: AutomationRun[] }
   | {
       type: 'mcp.servers'
-      servers: { name: string; connected: boolean; enabled: boolean; transport: 'stdio' | 'http'; command: string; args: string[]; url: string | null; tools: number; error: string | null; agents: string[] }[]
+      servers: { name: string; connected: boolean; enabled: boolean; transport: 'stdio' | 'http'; command: string; args: string[]; url: string | null; tools: number; error: string | null; agents: string[]; oauth: 'autorizado' | 'pendente' | null }[]
     }
+  | { type: 'mcp.authorized'; server: string }
   | { type: 'mcp.saved'; added: string[]; secrets: string[] }
   | { type: 'mcp.agents'; name: string; agents: string[] }
   | { type: 'mcp.resources'; server: string; resources: { uri: string; name?: string; description?: string; mimeType?: string }[] }

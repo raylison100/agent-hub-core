@@ -147,6 +147,17 @@ export const McpServerSchema = z
     headers: z.record(z.string(), z.string()).default({}),
     risk: z.record(z.string(), z.enum(['read', 'write', 'exec'])).default({ '*': 'write' }),
     enabled: z.boolean().default(true),
+    oauth: z
+      .object({
+        authorization_url: z.string().url().optional(),
+        token_url: z.string().url().optional(),
+        client_id: z.string().optional(),
+        client_secret: z.string().optional(),
+        scopes: z.array(z.string()).default([]),
+        register_url: z.string().url().optional(),
+        issuer: z.string().url().optional(),
+      })
+      .optional(),
   })
   .refine((s) => Boolean(s.command) !== Boolean(s.url), { message: 'informe command (stdio) ou url (http), nunca ambos' })
 
