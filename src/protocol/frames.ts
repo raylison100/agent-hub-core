@@ -16,6 +16,7 @@ export interface SessionSummary {
   pinned: boolean
   archived: boolean
   group: string | null
+  role: string | null
   mode: RunMode
   createdAt: number
   updatedAt: number
@@ -109,10 +110,10 @@ export interface StatsOverview {
 
 export type ClientFrame =
   | { type: 'auth'; token: string; protocol_version: number; client: string }
-  | { type: 'session.create'; agent?: string; workspace: string; title?: string; text?: string }
+  | { type: 'session.create'; agent?: string; role?: string; workspace: string; title?: string; text?: string }
   | { type: 'session.list'; limit?: number; include_archived?: boolean }
   | { type: 'session.get'; session_id: string }
-  | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean; agent?: string; mode?: RunMode; group?: string | null }
+  | { type: 'session.update'; session_id: string; title?: string; pinned?: boolean; archived?: boolean; agent?: string; role?: string | null; mode?: RunMode; group?: string | null }
   | { type: 'session.update_many'; session_ids: string[]; pinned?: boolean; archived?: boolean; group?: string | null }
   | { type: 'session.delete_many'; session_ids: string[] }
   | { type: 'session.delete'; session_id: string }
@@ -124,6 +125,7 @@ export type ClientFrame =
       mode?: RunMode
       reasoning?: 'low' | 'medium' | 'high' | 'max'
       agent?: string
+      role?: string
       improve?: boolean
       images?: { media_type: string; data: string; name?: string }[]
     }
@@ -212,7 +214,7 @@ export type ServerFrame =
   | { type: 'event'; session_id: string; run_id: string; seq: number; event: RunEvent }
   | { type: 'approval.required'; approval_id: string; session_id: string; run_id: string; tool: string; args: unknown; risk: string; expires_at: number }
   | { type: 'approval.resolved'; approval_id: string; decision: string }
-  | { type: 'agents.list'; agents: AgentSummary[]; errors: { file: string; message: string }[] }
+  | { type: 'agents.list'; agents: AgentSummary[]; roles: RoleSummary[]; errors: { file: string; message: string }[] }
   | { type: 'cost.report'; rows: { key: string; costUsd: number; calls: number; input: number; output: number; cacheRead: number }[] }
   | { type: 'cost.export'; csv: string; rows: number }
   | {
@@ -268,4 +270,12 @@ export interface AgentSummary {
   budget: { run_usd?: number; session_usd?: number; day_usd?: number }
   context_window: number
   delegates: string[]
+}
+
+export interface RoleSummary {
+  name: string
+  description: string
+  models: string[]
+  tools: string[]
+  policy: string | null
 }

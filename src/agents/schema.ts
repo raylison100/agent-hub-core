@@ -74,6 +74,53 @@ export type SandboxConfig = NonNullable<ProfileFrontmatter['sandbox']>
 export interface AgentProfile extends ProfileFrontmatter {
   system: string
   file: string
+  role?: string
+}
+
+export const RoleFrontmatterSchema = z.object({
+  name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+  description: z.string().min(1),
+  models: z.array(z.string()).min(1),
+  tools: z
+    .object({
+      native: z.array(z.string()).default([]),
+      mcp: z.array(z.string()).default([]),
+    })
+    .optional(),
+  skills: z.array(z.string()).optional(),
+  policy: z.string().optional(),
+  delegates: z.array(z.string()).optional(),
+  max_steps: z.number().int().positive().optional(),
+  budget: z
+    .object({
+      run_usd: z.number().nonnegative().optional(),
+      session_usd: z.number().nonnegative().optional(),
+    })
+    .optional(),
+  phases: ProfileFrontmatterSchema.shape.phases,
+})
+
+export type RoleFrontmatter = z.infer<typeof RoleFrontmatterSchema>
+
+export interface AgentRole extends RoleFrontmatter {
+  system: string
+  file: string
+}
+
+/** Junta papel e modelo num perfil executavel: o papel manda no prompt, nas ferramentas e na politica; o modelo mantem preco, janela e opcoes do provedor. */
+export function applyRole(profile: AgentProfile, role: AgentRole): AgentProfile {
+  return {
+    ...profile,
+    system: role.system,
+    role: role.name,
+    tools: role.tools ?? profile.tools,
+    skills: role.skills ?? profile.skills,
+    policy: role.policy ?? profile.policy,
+    delegates: role.delegates ?? profile.delegates,
+    max_steps: role.max_steps ?? profile.max_steps,
+    budget: role.budget ?? profile.budget,
+    phases: role.phases ?? profile.phases,
+  }
 }
 
 export const PolicySchema = z.object({

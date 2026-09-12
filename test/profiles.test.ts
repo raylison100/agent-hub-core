@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseProfile } from '../src/agents/load.js'
+import { parseProfile, parseRole } from '../src/agents/load.js'
+import { applyRole } from '../src/agents/schema.js'
 import { resolveModel } from '../src/providers/index.js'
 import { decide, riskFor } from '../src/tools/policy.js'
 import { validateCall } from '../src/tools/validate.js'
@@ -85,5 +86,46 @@ describe('riskFor', () => {
     const map = { 'gitlab_get_*': 'read', 'gitlab_list_*': 'read', '*': 'write' } as const
     expect(riskFor('gitlab_get_file', map)).toBe('read')
     expect(riskFor('gitlab_merge_merge_request', map)).toBe('write')
+  })
+})
+
+const roleText = `---
+name: revisor
+description: revisa mudanca de codigo
+models: [deepseek, claude]
+tools:
+  native: [read_file, git]
+policy: somente-leitura
+max_steps: 12
+---
+
+Voce revisa codigo e nao altera arquivo.
+`
+
+describe('papel separado do modelo', () => {
+  it('le o papel com seus modelos e seu prompt', () => {
+    const r = parseRole('revisor.md', roleText)
+    expect(r.models).toEqual(['deepseek', 'claude'])
+    expect(r.policy).toBe('somente-leitura')
+    expect(r.system).toBe('Voce revisa codigo e nao altera arquivo.')
+  })
+
+  it('aplicar o papel troca prompt, ferramentas e politica mas mantem modelo, janela e preco', () => {
+    const merged = applyRole(parseProfile('x.md', profileText), parseRole('revisor.md', roleText))
+    expect(merged.name).toBe('deepseek-dev')
+    expect(merged.provider).toBe('deepseek')
+    expect(merged.context.window).toBe(128000)
+    expect(merged.role).toBe('revisor')
+    expect(merged.system).toBe('Voce revisa codigo e nao altera arquivo.')
+    expect(merged.tools.native).toEqual(['read_file', 'git'])
+    expect(merged.policy).toBe('somente-leitura')
+    expect(merged.max_steps).toBe(12)
+  })
+
+  it('papel sem campo opcional nao apaga o que o perfil ja tinha', () => {
+    const semNada = parseRole('p.md', `---\nname: leitor\ndescription: so le\nmodels: [deepseek]\n---\n\nVoce le.\n`)
+    const merged = applyRole(parseProfile('x.md', profileText), semNada)
+    expect(merged.tools.native).toEqual(['read_file', 'edit_file'])
+    expect(merged.max_steps).toBe(30)
   })
 })

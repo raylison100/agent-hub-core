@@ -5,6 +5,8 @@ export { Ledger, type LedgerEntry, type LedgerFilter, type LedgerTotals, type Re
 export { Budget, BudgetExceededError, type BudgetLimits, type BudgetScope, type BudgetWarning } from './cost/budget.js'
 export {
   ProfileFrontmatterSchema,
+  RoleFrontmatterSchema,
+  applyRole,
   PolicySchema,
   BudgetsFileSchema,
   McpFileSchema,
@@ -19,6 +21,7 @@ export {
   type TriggerParsed,
   type WebhookConfig,
   type AgentProfile,
+  type AgentRole,
   type ProfilePhase,
   type SandboxConfig,
   type BudgetsFile,
@@ -28,8 +31,10 @@ export {
 export {
   loadAgentsRepo,
   loadProfiles,
+  loadRoles,
   loadSkills,
   parseProfile,
+  parseRole,
   splitFrontmatter,
   type AgentsRepo,
   type LoadError,

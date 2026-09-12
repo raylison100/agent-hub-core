@@ -11,9 +11,11 @@ import {
   McpFileSchema,
   PolicySchema,
   ProfileFrontmatterSchema,
+  RoleFrontmatterSchema,
   SecretsFileSchema,
   WebhooksFileSchema,
   type AgentProfile,
+  type AgentRole,
   type BudgetsFile,
   type McpFile,
   type WebhookConfig,
@@ -39,6 +41,7 @@ export interface Skill {
 
 export interface AgentsRepo {
   profiles: Map<string, AgentProfile>
+  roles: Map<string, AgentRole>
   policies: Map<string, Policy>
   skills: Map<string, Skill>
   budgets: BudgetsFile
@@ -86,6 +89,29 @@ export function loadProfiles(dir: string): LoadedProfiles {
   return { profiles, errors }
 }
 
+/** Le um papel a partir de um arquivo Markdown com frontmatter; o corpo e o prompt de sistema do papel. */
+export function parseRole(file: string, text: string): AgentRole {
+  const { data, body } = splitFrontmatter(text)
+  const front = RoleFrontmatterSchema.parse(data)
+  if (body.trim() === '') throw new Error('prompt de sistema vazio')
+  return { ...front, system: body.trim(), file }
+}
+
+export function loadRoles(dir: string): { roles: Map<string, AgentRole>; errors: LoadError[] } {
+  const roles = new Map<string, AgentRole>()
+  const errors: LoadError[] = []
+  for (const file of listFiles(dir, '.md')) {
+    try {
+      const role = parseRole(file, readFileSync(file, 'utf8'))
+      if (roles.has(role.name)) throw new Error(`nome duplicado: ${role.name}`)
+      roles.set(role.name, role)
+    } catch (err) {
+      errors.push({ file, message: describe(err) })
+    }
+  }
+  return { roles, errors }
+}
+
 export function loadSkills(dir: string): { skills: Map<string, Skill>; errors: LoadError[] } {
   const skills = new Map<string, Skill>()
   const errors: LoadError[] = []
@@ -115,6 +141,8 @@ export function loadAgentsRepo(root: string): AgentsRepo {
   errors.push(...loaded.errors)
   const skillsLoaded = loadSkills(join(root, 'skills'))
   errors.push(...skillsLoaded.errors)
+  const rolesLoaded = loadRoles(join(root, 'roles'))
+  errors.push(...rolesLoaded.errors)
   const policies = new Map<string, Policy>()
   for (const file of listFiles(join(root, 'policies'), '.json')) {
     const name = file.split(/[\\/]/).pop()!.replace(/\.json$/, '')
@@ -148,6 +176,7 @@ export function loadAgentsRepo(root: string): AgentsRepo {
   errors.push(...workflowsLoaded.errors)
   return {
     profiles: loaded.profiles,
+    roles: rolesLoaded.roles,
     policies,
     skills: skillsLoaded.skills,
     budgets,
