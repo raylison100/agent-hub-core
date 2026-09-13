@@ -105,8 +105,27 @@ export function classifierPrompt(intents: Record<string, string[]>, text: string
   ].join('\n')
 }
 
-/** Le a resposta do classificador e devolve uma intencao declarada ou null. */
+/** Formato de resposta do classificador: uma intencao declarada ou "nenhuma". */
+export function classifierJsonSchema(intents: Record<string, string[]>): Record<string, unknown> {
+  return {
+    type: 'object',
+    properties: { intencao: { type: 'string', enum: [...Object.keys(intents), 'nenhuma'] } },
+    required: ['intencao'],
+    additionalProperties: false,
+  }
+}
+
+/** Le a resposta do classificador, em JSON ou em palavra solta, e devolve uma intencao declarada ou null. */
 export function parseClassifierAnswer(answer: string, intents: Record<string, string[]>): string | null {
+  const json = /\{[\s\S]*\}/.exec(answer)
+  if (json) {
+    try {
+      const valor = (JSON.parse(json[0]) as { intencao?: unknown }).intencao
+      if (typeof valor === 'string') return valor in intents ? valor : null
+    } catch {
+      return null
+    }
+  }
   const word = answer.trim().toLowerCase().replace(/[^a-z0-9_-]+.*$/s, '')
   return word in intents ? word : null
 }

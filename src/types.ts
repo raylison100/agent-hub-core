@@ -71,6 +71,7 @@ export interface ChatRequest {
   reasoning: Reasoning
   systemCacheTtl: '5m' | '1h'
   providerOptions: Record<string, unknown>
+  responseFormat?: { name: string; schema: JsonSchema }
   signal?: AbortSignal
 }
 

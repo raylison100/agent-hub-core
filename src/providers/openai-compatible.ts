@@ -148,6 +148,9 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
     if (this.opts.sendReasoningEffort) params.reasoning_effort = this.effort(req) as ChatParams['reasoning_effort']
     if (this.opts.temperature !== undefined) params.temperature = this.opts.temperature
     if (this.opts.seed !== undefined) params.seed = this.opts.seed
+    if (req.responseFormat && this.opts.provider === 'ollama') {
+      params.response_format = { type: 'json_schema', json_schema: { name: req.responseFormat.name, schema: req.responseFormat.schema } }
+    }
     return Object.assign(params, this.deepseekParams(req.reasoning), this.opts.extraBody ?? {})
   }
 

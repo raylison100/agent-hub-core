@@ -68,6 +68,7 @@ export {
   activatedSkills,
   classifyIntent,
   classifierPrompt,
+  classifierJsonSchema,
   matchesWhen,
   improverAgent,
   improverPrompt,

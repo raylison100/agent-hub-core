@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { PromptImproverSchema, improverAgent, needsDelegation } from '../src/agents/routing.js'
+import { PromptImproverSchema, classifierJsonSchema, improverAgent, needsDelegation, parseClassifierAnswer } from '../src/agents/routing.js'
+import { OpenAICompatibleAdapter } from '../src/providers/openai-compatible.js'
+import type { ChatRequest } from '../src/types.js'
 import { ScoringSchema, blendedCost, callCost, feedbackDelta, scoreAgents, type ScoreCandidate } from '../src/agents/scoring.js'
 import type { ModelPrice } from '../src/cost/pricing.js'
 
@@ -235,5 +237,46 @@ describe('classe de latencia', () => {
     const interativo = scoreAgents([dupla[0]!], priceOf, scoring, { intent: null, promptTokens: 100 })
     const lote = scoreAgents([dupla[0]!], priceOf, scoring, { intent: null, promptTokens: 100, latency: 'lote' })
     expect(lote.chosen!.score).toBeLessThan(interativo.chosen!.score)
+  })
+})
+
+describe('classificador com saida estruturada', () => {
+  const intents = { revisar: ['revise'], implementar: ['cria'] }
+
+  it('declara as intencoes e a opcao nenhuma no schema', () => {
+    const schema = classifierJsonSchema(intents) as { properties: { intencao: { enum: string[] } } }
+    expect(schema.properties.intencao.enum).toEqual(['revisar', 'implementar', 'nenhuma'])
+  })
+
+  it('le a resposta em JSON e ainda aceita palavra solta de provedor sem gramatica', () => {
+    expect(parseClassifierAnswer('{"intencao":"revisar"}', intents)).toBe('revisar')
+    expect(parseClassifierAnswer('{"intencao":"nenhuma"}', intents)).toBeNull()
+    expect(parseClassifierAnswer('{"intencao":"inventada"}', intents)).toBeNull()
+    expect(parseClassifierAnswer('implementar', intents)).toBe('implementar')
+  })
+})
+
+describe('formato de resposta nos adaptadores compativeis com OpenAI', () => {
+  const req: ChatRequest = {
+    system: 's',
+    messages: [{ role: 'user', parts: [{ type: 'text', text: 'oi' }] }],
+    tools: [],
+    maxOutput: 40,
+    reasoning: 'low',
+    systemCacheTtl: '5m',
+    providerOptions: {},
+    responseFormat: { name: 'intencao', schema: { type: 'object' } },
+  }
+
+  it('manda json_schema para o Ollama', () => {
+    const ollama = new OpenAICompatibleAdapter({ provider: 'ollama', model: 'qwen3:8b', apiKey: 'x', baseURL: 'http://127.0.0.1:1/v1' })
+    expect(ollama['buildParams'](req).response_format).toEqual({ type: 'json_schema', json_schema: { name: 'intencao', schema: { type: 'object' } } })
+  })
+
+  it('nao manda formato para provedor remoto, que segue so pelo prompt', () => {
+    const gemini = new OpenAICompatibleAdapter({ provider: 'gemini', model: 'gemini-3.8-flash', apiKey: 'x', baseURL: 'http://127.0.0.1:1/v1' })
+    const deepseek = new OpenAICompatibleAdapter({ provider: 'deepseek', model: 'deepseek-v4-flash', apiKey: 'x', baseURL: 'http://127.0.0.1:1/v1' })
+    expect(gemini['buildParams'](req).response_format).toBeUndefined()
+    expect(deepseek['buildParams'](req).response_format).toBeUndefined()
   })
 })
