@@ -36,7 +36,7 @@ export type RunStop =
   | 'cancelled'
   | 'error'
 
-export type RoutedBy = 'rule' | 'classifier' | 'score' | 'default' | 'fixed' | 'override'
+export type RoutedBy = 'rule' | 'classifier' | 'score' | 'default' | 'fixed' | 'override' | 'cascade'
 
 export type RunEvent =
   | { type: 'text_delta'; delta: string }
@@ -46,6 +46,7 @@ export type RunEvent =
   | { type: 'usage'; step: number; usage: Usage; costUsd: number; model: string; latencyMs: number }
   | { type: 'budget_warning'; warning: BudgetWarning }
   | { type: 'escalation'; from: string; to: string; reason: string }
+  | { type: 'verification'; agent: string; ok: boolean; failures: { check: string; reason: string }[]; citations: number }
   | { type: 'compaction'; mode: 'prune' | 'summary'; before: number; after: number }
   | { type: 'max_output_retry'; reasoningTokens: number; maxOutput: number; reasoning: Reasoning }
   | { type: 'skills_loaded'; names: string[] }

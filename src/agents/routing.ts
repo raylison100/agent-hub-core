@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { approxTokens } from '../context/estimate.js'
 import type { Skill } from './load.js'
 import { ScoringSchema, type Scoring } from './scoring.js'
+import { CascadeSchema, type Cascade } from './verify.js'
 
 export const RuleWhenSchema = z.object({
   workspace: z.string().optional(),
@@ -41,6 +42,7 @@ export const RoutingFileSchema = z.union([
     default_agent: z.string().optional(),
     prompt_improver: PromptImproverSchema.optional(),
     scoring: ScoringSchema.optional(),
+    cascade: CascadeSchema.optional(),
   }),
 ])
 
@@ -56,6 +58,7 @@ export interface Routing {
   default_agent?: string
   prompt_improver?: PromptImprover
   scoring?: Scoring
+  cascade?: Cascade
 }
 
 /** Prompt para o reescritor: melhora o pedido do usuario para o agente alvo sem inventar fatos. */
