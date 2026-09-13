@@ -49,10 +49,10 @@ export type RunEvent =
   | { type: 'compaction'; mode: 'prune' | 'summary'; before: number; after: number }
   | { type: 'max_output_retry'; reasoningTokens: number; maxOutput: number; reasoning: Reasoning }
   | { type: 'skills_loaded'; names: string[] }
-  | { type: 'workspace_context'; instructions: string[]; memories: string[]; tokens: number; ignored: { name: string; reason: string }[] }
+  | { type: 'workspace_context'; instructions: string[]; memories: string[]; inHistory: string[]; tokens: number; ignored: { name: string; reason: string }[] }
   | { type: 'knowledge_indexed'; files: number; chunks: number; ignored: string[] }
   | { type: 'mcp_skipped'; servers: { name: string; reason: string }[] }
-  | { type: 'tools_selected'; kept: number; dropped: number; tokens: number; budget: number }
+  | { type: 'tools_selected'; kept: number; dropped: number; tokens: number; budget: number; reused: boolean }
   | {
       type: 'delegation'
       phase: 'start' | 'end'
@@ -106,6 +106,8 @@ export interface RunnerDeps {
   redact?: (text: string) => string
   preloadSkills?: Skill[]
   workspaceContext?: string
+  turnContext?: string
+  toolSet?: { previous?: string[]; save: (names: string[]) => void }
   delegate?: (agent: string, task: string, opts: DelegationOptions) => Promise<DelegationResult>
   spawn?: (agent: string, task: string, opts: DelegationOptions) => Promise<SpawnHandle>
   collect?: (taskId: string | undefined, wait: boolean) => Promise<DelegationResult[]>
@@ -230,9 +232,12 @@ export class AgentRunner {
     const { profile, emit } = this.deps
     this.hookCtx = { sessionId: input.sessionId, runId: input.runId, agent: profile.name, workspace: this.deps.workspace }
     const baseSystem = this.systemPrompt()
-    const escolha = selectTools(this.toolDefinitions(), input.userText, profile.context.window)
+    const escolha = selectTools(this.toolDefinitions(), input.userText, profile.context.window, undefined, this.deps.toolSet?.previous)
     const allTools = escolha.tools
-    if (escolha.dropped > 0) emit({ type: 'tools_selected', kept: allTools.length, dropped: escolha.dropped, tokens: escolha.used, budget: escolha.budget })
+    if (escolha.dropped > 0) {
+      emit({ type: 'tools_selected', kept: allTools.length, dropped: escolha.dropped, tokens: escolha.used, budget: escolha.budget, reused: escolha.reused })
+      if (!escolha.reused) this.deps.toolSet?.save(escolha.mcp)
+    }
     this.announcePhase(allTools)
     const userMessage = this.userMessage(input.userText, input.images)
     let appended: Message[] = [userMessage]
@@ -535,8 +540,9 @@ export class AgentRunner {
   private userMessage(text: string, images: ImageInput[] = []): Message {
     const parts: Part[] = [{ type: 'text', text }]
     for (const img of images) parts.push({ type: 'image', mediaType: img.mediaType, data: img.data, name: img.name })
+    if (this.deps.turnContext) parts.push({ type: 'text', text: this.deps.turnContext, context: true })
     const preload = this.deps.preloadSkills ?? []
-    for (const s of preload) parts.push({ type: 'text', text: `Instrucoes da skill ${s.name}, ativada por regra:\n\n${s.body}` })
+    for (const s of preload) parts.push({ type: 'text', text: `Instrucoes da skill ${s.name}, ativada por regra:\n\n${s.body}`, context: true })
     if (preload.length > 0) this.deps.emit({ type: 'skills_loaded', names: preload.map((s) => s.name) })
     return { role: 'user', parts }
   }

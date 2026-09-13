@@ -15,6 +15,7 @@ export interface Usage {
 export interface TextPart {
   type: 'text'
   text: string
+  context?: boolean
 }
 
 export interface ToolCallPart {

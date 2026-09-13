@@ -90,6 +90,8 @@ export {
   MemoryFrontmatterSchema,
   contextDir,
   decisionsDir,
+  deliveredMemories,
+  memoryHash,
   loadMemories,
   loadWorkspaceContext,
   memoryDir,

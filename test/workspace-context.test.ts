@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { loadMemories, loadWorkspaceContext, memoryDir } from '../src/agents/workspace-context.js'
+import { deliveredMemories, loadMemories, loadWorkspaceContext, memoryDir } from '../src/agents/workspace-context.js'
+import type { Message } from '../src/types.js'
 import { contextTools, listContextFiles } from '../src/tools/context-files.js'
 
 function workspace(): string {
@@ -24,9 +25,33 @@ describe('loadWorkspaceContext', () => {
     memoria(dir, 'porta-do-daemon', 'description: "porta"\ndata: 2026-09-12\n', 'O daemon escuta na 47311.')
     const ctx = loadWorkspaceContext(dir, { text: 'qualquer pedido', windowTokens: 100000 })
     expect(ctx.text).toContain('Commits em portugues.')
-    expect(ctx.text).toContain('O daemon escuta na 47311.')
+    expect(ctx.memoryText).toContain('O daemon escuta na 47311.')
     expect(ctx.instructions[0]?.file).toBe('CLAUDE.md')
     expect(ctx.memories.map((m) => m.name)).toEqual(['porta-do-daemon'])
+  })
+
+  it('mantem o system igual entre pedidos: memoria ativada vai para a mensagem, nao para o system', () => {
+    const dir = workspace()
+    writeFileSync(join(dir, 'CLAUDE.md'), 'Commits em portugues.')
+    memoria(dir, 'pagamento', 'activate: {"keywords":["cobranca"]}\n', 'O gateway recusa centavos.')
+    const primeiro = loadWorkspaceContext(dir, { text: 'ajusta o menu', windowTokens: 100000 })
+    const segundo = loadWorkspaceContext(dir, { text: 'corrige a cobranca', windowTokens: 100000 })
+    expect(segundo.text).toBe(primeiro.text)
+    expect(primeiro.memoryText).toBe('')
+    expect(segundo.memoryText).toContain('O gateway recusa centavos.')
+  })
+
+  it('nao repete memoria que ja chegou ao modelo nesta conversa, e entrega de novo quando o conteudo muda', () => {
+    const dir = workspace()
+    memoria(dir, 'porta', '', 'O daemon escuta na 47311.')
+    const primeiro = loadWorkspaceContext(dir, { text: 'oi', windowTokens: 100000 })
+    const historico: Message[] = [{ role: 'user', parts: [{ type: 'text', text: 'oi' }, { type: 'text', text: primeiro.memoryText, context: true }] }]
+    const repetido = loadWorkspaceContext(dir, { text: 'e agora?', windowTokens: 100000, delivered: deliveredMemories(historico) })
+    expect(repetido.memoryText).toBe('')
+    expect(repetido.inHistory).toEqual(['porta'])
+    memoria(dir, 'porta', '', 'O daemon escuta na 47312.')
+    const mudou = loadWorkspaceContext(dir, { text: 'e agora?', windowTokens: 100000, delivered: deliveredMemories(historico) })
+    expect(mudou.memoryText).toContain('47312')
   })
 
   it('deixa de fora a memoria cuja regra de ativacao nao casa com o pedido', () => {

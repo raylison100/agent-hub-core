@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { approxTokens } from '../context/estimate.js'
+import type { Message } from '../types.js'
 import { splitFrontmatter } from './load.js'
 import { RuleWhenSchema, matchesWhen, type RuleWhen } from './routing.js'
 
@@ -35,8 +37,10 @@ export interface MemoryItem {
 
 export interface WorkspaceContext {
   text: string
+  memoryText: string
   instructions: { file: string; tokens: number }[]
   memories: { name: string; file: string; tokens: number }[]
+  inHistory: string[]
   ignored: { name: string; reason: string }[]
   tokens: number
 }
@@ -45,6 +49,7 @@ export interface ContextOptions {
   text: string
   windowTokens: number
   maxShare?: number
+  delivered?: Set<string>
 }
 
 /** Le a memoria do workspace, uma por arquivo, ignorando o que nao da para validar. */
@@ -66,13 +71,32 @@ export function loadMemories(workspace: string): MemoryItem[] {
   return items
 }
 
+/** Identidade de um item de memoria: muda quando o nome ou o conteudo mudam. */
+export function memoryHash(name: string, body: string): string {
+  return createHash('sha256').update(`${name}\n${body}`).digest('hex').slice(0, 12)
+}
+
+/** Hashes dos itens de memoria que ja chegaram ao modelo nas mensagens desta conversa. */
+export function deliveredMemories(messages: Message[]): Set<string> {
+  const out = new Set<string>()
+  for (const m of messages) {
+    if (m.role !== 'user') continue
+    for (const p of m.parts) {
+      if (p.type !== 'text') continue
+      for (const achado of p.text.matchAll(/<item nome="[^"]*" hash="([0-9a-f]{12})"/g)) out.add(achado[1]!)
+    }
+  }
+  return out
+}
+
 /**
- * Monta o bloco de contexto do projeto que entra no system: instrucoes sempre, memoria so quando a regra de
- * ativacao casa com o pedido, e tudo dentro de um teto de tokens proporcional a janela do modelo.
+ * Monta o contexto do projeto dentro de um teto de tokens proporcional a janela do modelo. Instrucoes e glossario
+ * vao em `text`, para o system, e nao dependem do pedido. A memoria ativada pelo pedido vai em `memoryText`, para a
+ * mensagem do usuario, sem repetir o que ja esta no historico (`delivered`).
  */
 export function loadWorkspaceContext(workspace: string, opts: ContextOptions): WorkspaceContext {
   const teto = Math.floor(opts.windowTokens * (opts.maxShare ?? 0.15))
-  const out: WorkspaceContext = { text: '', instructions: [], memories: [], ignored: [], tokens: 0 }
+  const out: WorkspaceContext = { text: '', memoryText: '', instructions: [], memories: [], inHistory: [], ignored: [], tokens: 0 }
   const blocos: string[] = []
   let usados = 0
 
@@ -116,18 +140,21 @@ export function loadWorkspaceContext(workspace: string, opts: ContextOptions): W
 
   const memoria: string[] = []
   for (const m of ativas) {
+    const hash = memoryHash(m.name, m.body)
+    if (opts.delivered?.has(hash)) {
+      out.inHistory.push(m.name)
+      continue
+    }
     if (usados + m.tokens > teto) {
       out.ignored.push({ name: m.name, reason: `passaria do teto de ${teto} tokens` })
       continue
     }
     usados += m.tokens
     out.memories.push({ name: m.name, file: m.file, tokens: m.tokens })
-    memoria.push(`<item nome="${m.name}"${m.data ? ` data="${m.data}"` : ''}${m.run ? ` run="${m.run}"` : ''}>\n${m.body}\n</item>`)
+    memoria.push(`<item nome="${m.name}" hash="${hash}"${m.data ? ` data="${m.data}"` : ''}${m.run ? ` run="${m.run}"` : ''}>\n${m.body}\n</item>`)
   }
   if (memoria.length > 0) {
-    blocos.push(
-      `<memoria_do_projeto>\nFatos gravados em runs anteriores. Confira no codigo antes de agir sobre um item; se estiver errado, corrija com memory_write.\n${memoria.join('\n')}\n</memoria_do_projeto>`,
-    )
+    out.memoryText = `<memoria_do_projeto>\nFatos gravados em runs anteriores. Confira no codigo antes de agir sobre um item; se estiver errado, corrija com memory_write. Item com o mesmo nome de outro que ja apareceu na conversa substitui o anterior.\n${memoria.join('\n')}\n</memoria_do_projeto>`
   }
 
   out.text = blocos.join('\n\n')

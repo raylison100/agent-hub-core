@@ -59,6 +59,25 @@ describe('selectTools', () => {
     expect(r.tools.filter((t) => t.name.includes('__')).length).toBeGreaterThanOrEqual(3)
   })
 
+  it('repete o conjunto da mensagem anterior quando o pedido nao cita nada de fora dele', () => {
+    const primeira = selectTools(todas, 'quantos commits tem o repositorio no github', 8192)
+    const segunda = selectTools(todas, 'e na semana passada, quantos foram?', 8192, 0.25, primeira.mcp)
+    expect(segunda.reused).toBe(true)
+    expect(segunda.tools.map((t) => t.name)).toEqual(primeira.tools.map((t) => t.name))
+  })
+
+  it('refaz o conjunto quando o pedido cita servidor que ficou de fora', () => {
+    const primeira = selectTools(todas, 'quantos commits tem o repositorio no github', 8192)
+    const segunda = selectTools(todas, 'agora comenta no jira', 8192, 0.25, primeira.mcp)
+    expect(segunda.reused).toBe(false)
+    expect(segunda.tools.some((t) => t.name.startsWith('jira'))).toBe(true)
+  })
+
+  it('refaz o conjunto quando o anterior nao existe mais no catalogo', () => {
+    const r = selectTools(todas, 'oi', 8192, 0.25, ['servidor-removido__qualquer'])
+    expect(r.reused).toBe(false)
+  })
+
   it('conta o custo de cada definicao', () => {
     expect(toolTokens(github[0]!)).toBeGreaterThan(100)
   })
