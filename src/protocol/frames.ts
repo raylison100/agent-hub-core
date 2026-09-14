@@ -187,6 +187,11 @@ export type ClientFrame =
   | { type: 'skills.list'; agent?: string }
   | { type: 'skill.get'; name: string }
   | { type: 'plugins.list' }
+  | { type: 'plugins.claude_code' }
+  | { type: 'plugins.adicionar'; path?: string; git?: string; ref?: string }
+  | { type: 'plugins.remover'; chave: string }
+  | { type: 'plugins.alternar'; chave: string; enabled: boolean }
+  | { type: 'plugins.papel'; plugin: string; modelos: string[] }
   | { type: 'routing.info' }
   | { type: 'workspace.roots' }
   | { type: 'workspace.list'; path: string }
@@ -289,7 +294,9 @@ export type ServerFrame =
   | { type: 'fs.tree'; path: string; text: string }
   | { type: 'skills.list'; skills: { name: string; description: string; source: string }[] }
   | { type: 'skill.get'; name: string; body: string }
-  | { type: 'plugins.list'; plugins: { name: string; dir: string; skills: number; agents: number; mcp: number; hooks: number }[] }
+  | { type: 'plugins.list'; plugins: PluginResumo[] }
+  | { type: 'plugins.claude_code'; plugins: PluginDoClaudeCode[] }
+  | { type: 'plugins.papel_criado'; papel: string; arquivo: string }
   | { type: 'push.vapid'; public_key: string; subscriptions: number }
   | { type: 'push.subscribed'; endpoint: string }
   | { type: 'trigger.list'; triggers: TriggerStatus[] }
@@ -336,6 +343,42 @@ export interface HookCatalogItem {
   event: string
   tool?: string
   enabled: boolean
+}
+
+export interface RequisitoDePlugin {
+  campo: string
+  variavel: string
+  titulo: string
+  descricao: string
+  obrigatorio: boolean
+  definida: boolean
+}
+
+export interface PluginResumo {
+  chave: string
+  name: string
+  dir: string
+  enabled: boolean
+  descricao: string
+  versao: string | null
+  skills: number
+  agents: number
+  mcp: number
+  hooks: number
+  nomes_skills: string[]
+  nomes_mcp: string[]
+  requisitos: RequisitoDePlugin[]
+  erros: string[]
+  papel: string | null
+}
+
+export interface PluginDoClaudeCode {
+  id: string
+  nome: string
+  versao: string
+  descricao: string
+  pasta: string
+  ja_adicionado: boolean
 }
 
 export interface EstadoDaVersao {
