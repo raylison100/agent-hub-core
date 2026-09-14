@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { dirname, join, matchesGlob, relative } from 'node:path'
 import { contextTools } from './context-files.js'
 import type { RegisteredTool, ToolContext } from './registry.js'
-import { resolveInside } from './workspace.js'
+import { resolveInside, resolveReadable } from './workspace.js'
 
 const outputLimit = 50 * 1024
 const defaultTimeoutMs = 120_000
@@ -27,7 +27,7 @@ const listDir: RegisteredTool = {
     },
   },
   async handler(args, ctx) {
-    const dir = resolveInside(ctx.workspace, str(args.path) ?? '.')
+    const dir = resolveReadable(ctx.workspace, str(args.path) ?? '.', ctx.readRoots)
     const entries = readdirSync(dir, { withFileTypes: true })
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((e) => (e.isDirectory() ? `${e.name}/` : e.name))
@@ -38,7 +38,7 @@ const listDir: RegisteredTool = {
 const readFile: RegisteredTool = {
   definition: {
     name: 'read_file',
-    description: 'Le um arquivo de texto do workspace, com faixa de linhas opcional.',
+    description: 'Le um arquivo de texto do workspace, com faixa de linhas opcional. Arquivos de uma skill carregada sao lidos pelo caminho absoluto da pasta dela.',
     risk: 'read',
     inputSchema: {
       type: 'object',
@@ -52,7 +52,7 @@ const readFile: RegisteredTool = {
     },
   },
   async handler(args, ctx) {
-    const file = resolveInside(ctx.workspace, str(args.path)!)
+    const file = resolveReadable(ctx.workspace, str(args.path)!, ctx.readRoots)
     const lines = readFileSync(file, 'utf8').split('\n')
     const start = num(args.start_line) ?? 1
     const end = Math.min(num(args.end_line) ?? lines.length, lines.length)
@@ -81,7 +81,7 @@ const search: RegisteredTool = {
     },
   },
   async handler(args, ctx) {
-    const root = resolveInside(ctx.workspace, str(args.path) ?? '.')
+    const root = resolveReadable(ctx.workspace, str(args.path) ?? '.', ctx.readRoots)
     const regex = new RegExp(str(args.pattern)!, 'i')
     const glob = str(args.glob)
     const limit = num(args.max_results) ?? 100

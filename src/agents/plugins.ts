@@ -75,8 +75,8 @@ export function loadPlugin(dir: string, overrides: Record<string, ProfileOverrid
   const errors: LoadError[] = []
   const name = pluginName(dir, errors)
   const skills = new Map<string, Skill>()
-  for (const [key, skill] of loadSkills(join(dir, 'skills')).skills) skills.set(`${name}:${key}`, { ...skill, name: `${name}:${key}` })
-  for (const cmd of loadCommands(dir, name, errors)) skills.set(cmd.name, cmd)
+  for (const [key, skill] of loadSkills(join(dir, 'skills')).skills) skills.set(`${name}:${key}`, { ...skill, name: `${name}:${key}`, root: dir })
+  for (const cmd of loadCommands(dir, name, errors)) skills.set(cmd.name, { ...cmd, root: dir })
   const profiles = loadPluginProfiles(dir, name, [...skills.keys()], overrides, errors)
   const mcp = loadPluginMcp(dir, name, errors)
   const hooks = loadPluginHooks(dir, errors)
@@ -235,8 +235,11 @@ function mapTools(raw: unknown): string[] {
   return filtered.length > 0 ? [...new Set(filtered)] : ['list_dir', 'read_file', 'search']
 }
 
-function expandRoot(value: string, dir: string): string {
-  return value.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, dir)
+/** Troca a raiz do plugin pelo caminho e cada campo de configuracao do usuario pela variavel de ambiente de mesmo nome em maiusculas. */
+export function expandRoot(value: string, dir: string): string {
+  return value
+    .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, dir)
+    .replace(/\$\{user_config\.([A-Za-z0-9_]+)\}/g, (_, campo: string) => `\${${campo.toUpperCase()}}`)
 }
 
 function slug(value: string): string {

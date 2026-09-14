@@ -135,6 +135,16 @@ export interface RunResult {
   error?: string
 }
 
+/** Instrucoes da skill com as variaveis de pasta trocadas pelos caminhos e a indicacao de onde ficam os arquivos dela. */
+export function skillInstructions(skill: Skill): string {
+  const raiz = skill.root ?? skill.dir
+  const corpo = skill.body
+    .replace(/\$\{CLAUDE_SKILL_DIR\}/g, skill.dir)
+    .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, raiz)
+  const pastas = skill.root ? `Pasta desta skill: ${skill.dir}\nPasta do plugin: ${skill.root}` : `Pasta desta skill: ${skill.dir}`
+  return `${pastas}\nCaminhos relativos citados abaixo (assets/, references/, scripts/, <skill>) partem da pasta da skill: leia com read_file ou list_dir pelo caminho absoluto e rode scripts com o caminho absoluto. Os arquivos que voce criar vao no workspace.\n\n${corpo}`
+}
+
 const loadSkillTool: ToolDefinition = {
   name: 'load_skill',
   description: 'Carrega as instrucoes completas de uma skill listada no prompt de sistema.',
@@ -502,7 +512,7 @@ export class AgentRunner {
     if (def.name === 'plan' || def.name === 'done') return `registrado: ${String(args.summary).slice(0, 200)}`
     const tool = this.deps.tools.get(def.name)
     if (!tool) throw new Error(`ferramenta nao registrada: ${def.name}`)
-    return tool.handler(args, { workspace: this.deps.workspace, runId: this.hookCtx.runId, sessionId: this.hookCtx.sessionId, agent: this.deps.profile.name, signal: this.deps.signal, sandbox: this.deps.sandbox })
+    return tool.handler(args, { workspace: this.deps.workspace, runId: this.hookCtx.runId, sessionId: this.hookCtx.sessionId, agent: this.deps.profile.name, signal: this.deps.signal, sandbox: this.deps.sandbox, readRoots: this.skillRoots() })
   }
 
   private async delegate(agent: string, task: string, opts: DelegationOptions): Promise<string> {
@@ -535,7 +545,14 @@ export class AgentRunner {
     const skill = this.deps.skills.get(name)
     if (!skill || !this.deps.profile.skills.includes(name)) throw new Error(`skill nao disponivel: ${name}`)
     this.deps.emit({ type: 'skills_loaded', names: [name] })
-    return skill.body
+    return skillInstructions(skill)
+  }
+
+  /** Pastas das skills deste agente, liberadas para leitura pelo caminho absoluto. */
+  private skillRoots(): string[] {
+    const { profile, skills, preloadSkills } = this.deps
+    const lista = [...profile.skills.map((n) => skills.get(n)), ...(preloadSkills ?? [])].filter((s): s is Skill => s !== undefined)
+    return [...new Set(lista.map((s) => s.root ?? s.dir))]
   }
 
   private userMessage(text: string, images: ImageInput[] = []): Message {
@@ -543,7 +560,7 @@ export class AgentRunner {
     for (const img of images) parts.push({ type: 'image', mediaType: img.mediaType, data: img.data, name: img.name })
     if (this.deps.turnContext) parts.push({ type: 'text', text: this.deps.turnContext, context: true })
     const preload = this.deps.preloadSkills ?? []
-    for (const s of preload) parts.push({ type: 'text', text: `Instrucoes da skill ${s.name}, ativada por regra:\n\n${s.body}`, context: true })
+    for (const s of preload) parts.push({ type: 'text', text: `Instrucoes da skill ${s.name}, ativada por regra:\n\n${skillInstructions(s)}`, context: true })
     if (preload.length > 0) this.deps.emit({ type: 'skills_loaded', names: preload.map((s) => s.name) })
     return { role: 'user', parts }
   }

@@ -17,6 +17,26 @@ export function resolveInside(workspace: string, p: string): string {
   return candidate
 }
 
+/** Resolve um caminho de leitura: dentro do workspace ou, por caminho absoluto, dentro de uma das pastas extras liberadas para leitura. */
+export function resolveReadable(workspace: string, p: string, extraRoots: string[] = []): string {
+  try {
+    return resolveInside(workspace, p)
+  } catch (err) {
+    if (!(err instanceof OutsideWorkspaceError) || !isAbsolute(p)) throw err
+    const real = realpathOfNearestExisting(resolve(p))
+    for (const extra of extraRoots) {
+      let root: string
+      try {
+        root = realpathSync(extra)
+      } catch {
+        continue
+      }
+      if (real === root || real.startsWith(root + sep)) return resolve(p)
+    }
+    throw err
+  }
+}
+
 function realpathOfNearestExisting(p: string): string {
   let current = p
   const tail: string[] = []

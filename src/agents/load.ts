@@ -37,6 +37,7 @@ export interface Skill {
   dir: string
   body: string
   activate?: RuleWhen
+  root?: string
 }
 
 export interface AgentsRepo {

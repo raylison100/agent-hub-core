@@ -14,6 +14,7 @@ export interface ToolContext {
   agent?: string
   signal?: AbortSignal
   sandbox?: SandboxOptions
+  readRoots?: string[]
 }
 
 export type ToolHandler = (args: Record<string, unknown>, ctx: ToolContext) => Promise<string>
