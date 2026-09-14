@@ -268,7 +268,7 @@ export type ServerFrame =
       global_month_limit_usd: number | null
       agents: Record<string, { today_usd: number; day_limit_usd: number | null }>
     }
-  | { type: 'sync'; session_id: string; events: { seq: number; run_id: string; event: RunEvent }[] }
+  | { type: 'sync'; session_id: string; events: { seq: number; run_id: string; event: RunEvent }[]; active_run_ids?: string[] }
   | { type: 'schedule.list'; schedules: ScheduleStatus[]; paused: boolean }
   | { type: 'schedule.saved'; schedule: ScheduleStatus }
   | { type: 'schedule.deleted'; id: string }
