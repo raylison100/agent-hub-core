@@ -115,6 +115,13 @@ export type ClientFrame =
   | { type: 'auth.password'; password: string }
   | { type: 'auth.devices' }
   | { type: 'auth.revoke'; device_id: string }
+  | { type: 'compartilhar.listar' }
+  | { type: 'compartilhar.criar'; nome: string; modelos: string[]; limite_tokens_dia: number; janela: number }
+  | { type: 'compartilhar.revogar'; id: string }
+  | { type: 'recebidos.listar' }
+  | { type: 'recebidos.adicionar'; convite: string; no_roteamento?: boolean }
+  | { type: 'recebidos.remover'; id: string }
+  | { type: 'recebidos.testar'; id: string }
   | { type: 'session.create'; agent?: string; role?: string; workspace: string; title?: string; text?: string }
   | { type: 'session.list'; limit?: number; include_archived?: boolean }
   | { type: 'session.get'; session_id: string }
@@ -205,6 +212,10 @@ export type ServerFrame =
   | { type: 'auth.ok'; protocol_version: number; device: string; senha_definida?: boolean }
   | { type: 'auth.credential'; credential: string; device_id: string; device: string }
   | { type: 'auth.devices'; devices: DeviceSummary[]; senha_definida: boolean }
+  | { type: 'compartilhar.lista'; relay_configurado: boolean; modelos_locais: string[]; convidados: ConvidadoResumo[] }
+  | { type: 'compartilhar.criado'; convite: string; convidado: ConvidadoResumo }
+  | { type: 'recebidos.lista'; recebidos: RecebidoResumo[] }
+  | { type: 'recebidos.teste'; id: string; ok: boolean; detalhe: string; ms: number }
   | { type: 'auth.error'; message: string }
   | { type: 'error'; message: string; ref?: string }
   | { type: 'session.created'; session: SessionSummary; routed?: { intent: string | null; rule: unknown } }
@@ -322,6 +333,28 @@ export interface HookCatalogItem {
   event: string
   tool?: string
   enabled: boolean
+}
+
+export interface ConvidadoResumo {
+  id: string
+  nome: string
+  modelos: string[]
+  janela: number
+  limite_tokens_dia: number
+  uso_hoje: number
+  conectado: boolean
+  criado_em: number
+  revogado_em: number | null
+}
+
+export interface RecebidoResumo {
+  id: string
+  anfitriao: string
+  modelos: { nome: string; janela: number }[]
+  agentes: string[]
+  limite_tokens_dia: number
+  no_roteamento: boolean
+  criado_em: number
 }
 
 export interface DeviceSummary {
