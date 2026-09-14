@@ -388,6 +388,7 @@ export interface EstadoDaVersao {
   endereco_da_versao: string | null
   disponivel: boolean
   instalacao: 'pacote' | 'repositorio'
+  nao_lancadas: { repositorio: string; commits: number }[]
   supervisionado: boolean
   pode_atualizar: boolean
   atualizando: boolean

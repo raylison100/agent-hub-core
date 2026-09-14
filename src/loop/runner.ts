@@ -39,6 +39,7 @@ export type RunStop =
 export type RoutedBy = 'rule' | 'classifier' | 'score' | 'default' | 'fixed' | 'override' | 'cascade'
 
 export type RunEvent =
+  | { type: 'user_message'; text: string; images: { mediaType: string; name?: string }[] }
   | { type: 'text_delta'; delta: string }
   | { type: 'reasoning_delta'; delta: string }
   | { type: 'tool_call'; call: ToolCallPart; decision: Decision }
@@ -251,6 +252,7 @@ export class AgentRunner {
     }
     this.announcePhase(allTools)
     const userMessage = this.userMessage(input.userText, input.images)
+    this.deps.emit({ type: 'user_message', text: input.userText, images: (input.images ?? []).map((i) => ({ mediaType: i.mediaType, name: i.name })) })
     let appended: Message[] = [userMessage]
     let messages = [...input.history, userMessage]
     let invalid = 0
