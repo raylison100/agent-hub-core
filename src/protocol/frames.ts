@@ -200,6 +200,8 @@ export type ClientFrame =
   | { type: 'health.list' }
   | { type: 'daemon.reload' }
   | { type: 'daemon.restart' }
+  | { type: 'versao.consultar'; forcar?: boolean }
+  | { type: 'versao.atualizar' }
   | { type: 'hooks.list' }
   | { type: 'hooks.toggle'; id: string; enabled: boolean }
   | { type: 'term.open'; session_id: string; cols: number; rows: number; term_id?: string }
@@ -237,6 +239,7 @@ export type ServerFrame =
   | { type: 'feedback.summary'; rows: { agent: string; intent: string; good: number; bad: number; delta: number }[] }
   | { type: 'stats.overview'; stats: StatsOverview }
   | { type: 'health.list'; items: HealthItem[] }
+  | { type: 'versao.estado'; estado: EstadoDaVersao }
   | { type: 'daemon.status'; supervisionado: boolean; reiniciando: boolean; detalhe: string }
   | { type: 'hooks.list'; catalog: HookCatalogItem[]; extras: number }
   | { type: 'term.opened'; term_id: string; session_id: string; cwd: string; buffer: string }
@@ -333,6 +336,20 @@ export interface HookCatalogItem {
   event: string
   tool?: string
   enabled: boolean
+}
+
+export interface EstadoDaVersao {
+  atual: string
+  ultima: string | null
+  publicada_em: string | null
+  endereco_da_versao: string | null
+  disponivel: boolean
+  instalacao: 'pacote' | 'repositorio'
+  supervisionado: boolean
+  pode_atualizar: boolean
+  atualizando: boolean
+  detalhe: string
+  consultado_em: number | null
 }
 
 export interface ConvidadoResumo {
