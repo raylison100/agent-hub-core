@@ -142,6 +142,7 @@ export type ClientFrame =
       improve?: boolean
       images?: { media_type: string; data: string; name?: string }[]
       run_usd?: number
+      budget_scope?: 'run' | 'session' | 'agent' | 'global'
     }
   | { type: 'cost.export'; since?: number; until?: number }
   | { type: 'cost.status' }
