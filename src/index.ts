@@ -59,7 +59,7 @@ export { selectTools, toolTokens, type ToolSelection } from './tools/select.js'
 export { decide, defaultPolicy, isDestructive, riskFor } from './tools/policy.js'
 export { resolveInside, resolveReadable, OutsideWorkspaceError } from './tools/workspace.js'
 export { approxTokens, approxMessageTokens, estimateNextInput } from './context/estimate.js'
-export { compactHistory, estimateAll, needsCompaction, pruneToolResults, type CompactionPolicy, type Summarizer } from './context/compact.js'
+export { compactHistory, estimateAll, needsCompaction, pruneToolResults, withoutRepeatedToolMessages, type CompactionPolicy, type Summarizer } from './context/compact.js'
 export { Redactor } from './tools/redact.js'
 export {
   RoutingFileSchema,

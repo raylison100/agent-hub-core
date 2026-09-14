@@ -39,6 +39,29 @@ export async function compactHistory(messages: Message[], summarize: Summarizer)
   ]
 }
 
+/** Tira do historico chamadas de ferramenta com id ja visto e resultados de chamada ja respondida, que os provedores recusam. */
+export function withoutRepeatedToolMessages(messages: Message[]): Message[] {
+  const calls = new Set<string>()
+  const answered = new Set<string>()
+  const out: Message[] = []
+  for (const m of messages) {
+    const parts = m.parts.filter((p) => {
+      if (p.type === 'tool_call') {
+        if (calls.has(p.id)) return false
+        calls.add(p.id)
+      }
+      if (p.type === 'tool_result') {
+        if (answered.has(p.callId)) return false
+        answered.add(p.callId)
+      }
+      return true
+    })
+    if (parts.length === 0) continue
+    out.push(parts.length === m.parts.length ? m : { ...m, parts })
+  }
+  return out
+}
+
 export function estimateAll(system: string, messages: Message[]): number {
   return approxTokens(system) + approxMessageTokens(messages)
 }

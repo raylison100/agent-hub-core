@@ -95,6 +95,7 @@ export interface ImageInput {
   mediaType: string
   data: string
   name?: string
+  ref?: string
 }
 
 export interface Capabilities {

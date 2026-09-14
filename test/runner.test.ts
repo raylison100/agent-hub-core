@@ -111,6 +111,40 @@ describe('AgentRunner', () => {
     expect(adapter.requests[1]?.messages.at(-1)?.role).toBe('tool')
   })
 
+  it('depois de compactar nao duplica a resposta nem regrava o historico', async () => {
+    const dir = workspaceWithFile()
+    const adapter = fakeAdapter([
+      {
+        message: { role: 'assistant', parts: [{ type: 'tool_call', id: 'c1', name: 'read_file', args: { path: 'a.txt' } }] },
+        toolCalls: [{ type: 'tool_call', id: 'c1', name: 'read_file', args: { path: 'a.txt' } }],
+        stopReason: 'tool',
+      },
+    ])
+    adapter.capabilities = () => ({ streaming: false, cacheControl: false, countTokens: false, reasoningLevels: false, historyEditable: true })
+    const h = harness(adapter, dir)
+    const history = [
+      { role: 'user' as const, parts: [{ type: 'text' as const, text: 'antes' }] },
+      { role: 'assistant' as const, parts: [{ type: 'tool_call' as const, id: 'c0', name: 'read_file', args: { path: 'a.txt' } }] },
+      { role: 'tool' as const, parts: [{ type: 'tool_result' as const, callId: 'c0', content: 'x'.repeat(8000), isError: false }] },
+    ]
+    const result = await h.runner.run({ runId: 'r', sessionId: 's', history, userText: 'leia de novo' })
+    expect(h.events.some((e) => e.type === 'compaction')).toBe(true)
+    expect(result.stop).toBe('end')
+    expect(result.appended.map((m) => m.role)).toEqual(['user', 'assistant', 'tool', 'assistant'])
+    const ids = adapter.requests[1]!.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : [])))
+    expect(ids).toEqual(['c0', 'c1'])
+  })
+
+  it('tira do historico chamada e resultado repetidos antes de mandar ao provedor', async () => {
+    const dir = workspaceWithFile()
+    const adapter = fakeAdapter([])
+    const h = harness(adapter, dir)
+    const chamada = { role: 'assistant' as const, parts: [{ type: 'tool_call' as const, id: 'c9', name: 'read_file', args: { path: 'a.txt' } }] }
+    const resposta = { role: 'tool' as const, parts: [{ type: 'tool_result' as const, callId: 'c9', content: 'linha', isError: false }] }
+    await h.runner.run({ runId: 'r', sessionId: 's', history: [{ role: 'user', parts: [{ type: 'text', text: 'oi' }] }, chamada, chamada, resposta, resposta], userText: 'segue' })
+    expect(adapter.requests[0]!.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'tool', 'user'])
+  })
+
   it('pede aprovacao para exec e devolve erro quando negado', async () => {
     const dir = workspaceWithFile()
     const adapter = fakeAdapter([

@@ -1,6 +1,6 @@
 import type { AgentProfile } from '../agents/schema.js'
 import type { Skill } from '../agents/load.js'
-import { compactHistory, estimateAll, needsCompaction, pruneToolResults, type Summarizer } from '../context/compact.js'
+import { compactHistory, estimateAll, needsCompaction, pruneToolResults, withoutRepeatedToolMessages, type Summarizer } from '../context/compact.js'
 import { approxTokens, estimateNextInput } from '../context/estimate.js'
 import { Budget, BudgetExceededError, type BudgetWarning } from '../cost/budget.js'
 import type { Ledger } from '../cost/ledger.js'
@@ -39,7 +39,7 @@ export type RunStop =
 export type RoutedBy = 'rule' | 'classifier' | 'score' | 'default' | 'fixed' | 'override' | 'cascade'
 
 export type RunEvent =
-  | { type: 'user_message'; text: string; images: { mediaType: string; name?: string }[] }
+  | { type: 'user_message'; text: string; images: { mediaType: string; name?: string; ref?: string }[] }
   | { type: 'text_delta'; delta: string }
   | { type: 'reasoning_delta'; delta: string }
   | { type: 'tool_call'; call: ToolCallPart; decision: Decision }
@@ -252,9 +252,9 @@ export class AgentRunner {
     }
     this.announcePhase(allTools)
     const userMessage = this.userMessage(input.userText, input.images)
-    this.deps.emit({ type: 'user_message', text: input.userText, images: (input.images ?? []).map((i) => ({ mediaType: i.mediaType, name: i.name })) })
+    this.deps.emit({ type: 'user_message', text: input.userText, images: (input.images ?? []).map((i) => ({ mediaType: i.mediaType, name: i.name, ref: i.ref })) })
     let appended: Message[] = [userMessage]
-    let messages = [...input.history, userMessage]
+    let messages = [...withoutRepeatedToolMessages(input.history), userMessage]
     let invalid = 0
     let lastInput = this.deps.ledger.lastInputTokens(input.sessionId)
     let sinceLast: Message[] = [...appended]
@@ -265,7 +265,7 @@ export class AgentRunner {
     const compacted = await this.compactIfNeeded(baseSystem, messages, input.history, lastInput, sinceLast)
     if (compacted) {
       messages = compacted
-      appended = compacted
+      appended = compacted[0]?.kind === 'compaction' ? [...compacted] : [userMessage]
       lastInput = null
       sinceLast = []
     }
