@@ -2,6 +2,8 @@
   "name": "@agent-hub/core",
   "version": "0.1.0",
   "description": "Adaptadores de provedor, loop de agente, ledger de custo, ferramentas e perfis do Agent Hub",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "Raylison Nunes (https://github.com/raylison100)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -48,5 +50,6 @@
     "@types/ws": "^8.18.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
-  }
+  },
+  "private": true
 }
