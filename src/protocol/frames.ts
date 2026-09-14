@@ -141,6 +141,7 @@ export type ClientFrame =
       role?: string
       improve?: boolean
       images?: { media_type: string; data: string; name?: string }[]
+      run_usd?: number
     }
   | { type: 'cost.export'; since?: number; until?: number }
   | { type: 'cost.status' }
