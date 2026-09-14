@@ -66,7 +66,7 @@ const readFile: RegisteredTool = {
 const search: RegisteredTool = {
   definition: {
     name: 'search',
-    description: 'Busca uma expressao regular em arquivos do workspace. Devolve arquivo, linha e trecho.',
+    description: 'Busca uma expressao regular em arquivos do workspace, numa pasta ou num arquivo so. Devolve arquivo, linha e trecho.',
     risk: 'read',
     inputSchema: {
       type: 'object',
@@ -250,6 +250,7 @@ function runShell(command: string, cwd: string, timeoutMs: number, ctx: ToolCont
 }
 
 function walk(dir: string, visit: (file: string) => boolean): boolean {
+  if (statSync(dir).isFile()) return visit(dir)
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) {

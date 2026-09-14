@@ -24,6 +24,16 @@ function plugin(): { base: string; dir: string; workspace: string } {
   return { base, dir, workspace }
 }
 
+describe('search', () => {
+  it('aceita um arquivo como caminho, alem de pasta', async () => {
+    const { workspace } = plugin()
+    writeFileSync(join(workspace, 'arte.html'), '<p>abertura</p>\n<p>fechamento de caixa</p>\n')
+    const search = nativeTools().find((t) => t.definition.name === 'search')!
+    expect(await search.handler({ pattern: 'fechamento de caixa', path: 'arte.html' }, { workspace })).toBe('arte.html:2: <p>fechamento de caixa</p>')
+    expect(await search.handler({ pattern: 'fechamento', path: '.' }, { workspace })).toContain('arte.html:2:')
+  })
+})
+
 describe('skills de plugin', () => {
   it('troca campo de configuracao do usuario pela variavel de ambiente em maiusculas', () => {
     expect(expandRoot('${user_config.gemini_api_key}', '/p')).toBe('${GEMINI_API_KEY}')
