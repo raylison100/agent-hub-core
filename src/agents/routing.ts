@@ -19,6 +19,12 @@ export const RuleSchema = z.object({
   agent: z.string(),
 })
 
+export const RoleRuleSchema = z.object({
+  when: RuleWhenSchema,
+  role: z.string(),
+  improve: z.boolean().optional(),
+})
+
 export const ClassifierSchema = z.object({
   agent: z.string(),
   max_prompt_chars: z.number().int().positive().default(2000),
@@ -38,6 +44,7 @@ export const RoutingFileSchema = z.union([
   z.object({
     intents: z.record(z.string(), z.array(z.string())).default({}),
     rules: z.array(RuleSchema).default([]),
+    roles: z.array(RoleRuleSchema).optional(),
     classifier: ClassifierSchema.optional(),
     default_agent: z.string().optional(),
     prompt_improver: PromptImproverSchema.optional(),
@@ -48,12 +55,14 @@ export const RoutingFileSchema = z.union([
 
 export type RuleWhen = z.infer<typeof RuleWhenSchema>
 export type Rule = z.infer<typeof RuleSchema>
+export type RoleRule = z.infer<typeof RoleRuleSchema>
 export type Classifier = z.infer<typeof ClassifierSchema>
 export type PromptImprover = z.infer<typeof PromptImproverSchema>
 
 export interface Routing {
   intents: Record<string, string[]>
   rules: Rule[]
+  roles?: RoleRule[]
   classifier?: Classifier
   default_agent?: string
   prompt_improver?: PromptImprover
@@ -172,6 +181,16 @@ export function route(routing: Routing, ctx: RouteContext, intentOverride?: stri
     if (matches(rule.when, ctx, intent, tokens, files)) return { agent: rule.agent, rule, intent }
   }
   return null
+}
+
+/** Primeira regra de papel que casa com o pedido, para sessao sem papel escolhido. */
+export function routeRole(routing: Routing, ctx: RouteContext): RoleRule | null {
+  const regras = routing.roles ?? []
+  if (regras.length === 0) return null
+  const intent = classifyIntent(ctx.text, routing.intents)
+  const tokens = approxTokens(ctx.text)
+  const files = pathsIn(ctx.text)
+  return regras.find((r) => matches(r.when, ctx, intent, tokens, files)) ?? null
 }
 
 /** Skills cujo `activate` casa com o contexto, restritas as que o perfil lista. */

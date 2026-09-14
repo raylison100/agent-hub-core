@@ -1,4 +1,23 @@
 import { describe, expect, it } from 'vitest'
+import { routeRole } from '../src/agents/routing.js'
+
+describe('routeRole', () => {
+  const routing = {
+    intents: { implementar: ['cria', 'crie'] },
+    rules: [],
+    roles: [{ when: { keywords: ['arte', 'campanha', 'stories'] }, role: 'marketing', improve: false }],
+  }
+
+  it('escolhe o papel pela palavra do pedido mesmo quando outra intencao casa antes', () => {
+    expect(routeRole(routing, { text: 'Crie uma arte nova para meu pdv', workspace: '/w' })?.role).toBe('marketing')
+    expect(routeRole(routing, { text: 'Crie uma campanha institucional', workspace: '/w' })?.improve).toBe(false)
+  })
+
+  it('nao casa com pedaco de palavra nem sem regra', () => {
+    expect(routeRole(routing, { text: 'corrija a parte do login', workspace: '/w' })).toBeNull()
+    expect(routeRole({ intents: {}, rules: [] }, { text: 'arte', workspace: '/w' })).toBeNull()
+  })
+})
 import { PromptImproverSchema, classifierJsonSchema, improverAgent, needsDelegation, parseClassifierAnswer } from '../src/agents/routing.js'
 import { OpenAICompatibleAdapter } from '../src/providers/openai-compatible.js'
 import type { ChatRequest } from '../src/types.js'

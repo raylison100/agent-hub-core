@@ -69,7 +69,7 @@ export type RunEvent =
     }
   | { type: 'hook'; event: string; tool?: string; allow: boolean; reason?: string }
   | { type: 'phase'; index: number; name: string; tools: string[] }
-  | { type: 'routed'; agent: string; model: string; by: RoutedBy; intent: string | null; reason: string; ranking?: ScoredAgent[] }
+  | { type: 'routed'; agent: string; model: string; by: RoutedBy; intent: string | null; reason: string; ranking?: ScoredAgent[]; role?: string }
   | { type: 'prompt_improved'; by: string; original: string; improved: string; costUsd: number }
   | { type: 'run_finished'; stop: RunStop; steps: number; costUsd: number; error?: string }
 

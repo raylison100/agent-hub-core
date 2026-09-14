@@ -78,6 +78,8 @@ export {
   emptyRouting,
   normalizeRouting,
   route,
+  routeRole,
+  type RoleRule,
   type Classifier,
   type Routing,
   type Rule,
