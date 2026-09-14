@@ -206,6 +206,7 @@ export type ClientFrame =
   | { type: 'daemon.reload' }
   | { type: 'daemon.restart' }
   | { type: 'arquivo.ler'; session_id: string; path: string }
+  | { type: 'midia.ler'; ref: string }
   | { type: 'versao.consultar'; forcar?: boolean }
   | { type: 'versao.atualizar' }
   | { type: 'hooks.list' }
@@ -247,6 +248,7 @@ export type ServerFrame =
   | { type: 'health.list'; items: HealthItem[] }
   | { type: 'versao.estado'; estado: EstadoDaVersao }
   | { type: 'arquivo.conteudo'; session_id: string; path: string; media_type: string; data: string; size: number }
+  | { type: 'midia.conteudo'; ref: string; media_type: string; data: string }
   | { type: 'daemon.status'; supervisionado: boolean; reiniciando: boolean; detalhe: string }
   | { type: 'hooks.list'; catalog: HookCatalogItem[]; extras: number }
   | { type: 'term.opened'; term_id: string; session_id: string; cwd: string; buffer: string }
