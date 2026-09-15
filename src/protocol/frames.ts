@@ -237,6 +237,12 @@ export type ClientFrame =
   | { type: 'secrets.list' }
   | { type: 'secrets.set'; name: string; value: string }
   | { type: 'secrets.delete'; name: string }
+  | { type: 'secrets.testar'; name: string }
+  | { type: 'budgets.save'; limites: LimitesDeGasto }
+  | { type: 'pricing.get' }
+  | { type: 'pricing.save'; modelos: PrecoDeModelo[] }
+  | { type: 'mcp.get'; name: string }
+  | { type: 'mcp.save'; conector: ConectorEditavel; original?: string }
   | { type: 'role.get'; name: string }
   | { type: 'role.save'; role: RoleDetail; original?: string }
   | { type: 'role.delete'; name: string }
@@ -335,8 +341,13 @@ export type ServerFrame =
       today_usd: number
       month_usd: number
       global_month_limit_usd: number | null
+      automation_month_limit_usd?: number | null
+      automation_month_usd?: number
       agents: Record<string, { today_usd: number; day_limit_usd: number | null }>
     }
+  | { type: 'pricing'; versao: string; idade_dias: number | null; modelos: PrecoDeModelo[]; em_uso: string[]; sem_preco: string[] }
+  | { type: 'secrets.teste'; name: string; ok: boolean; mensagem: string }
+  | { type: 'mcp.detail'; conector: ConectorEditavel; agentes: string[] }
   | { type: 'sync'; session_id: string; events: { seq: number; run_id: string; event: RunEvent }[]; active_run_ids?: string[] }
   | { type: 'schedule.list'; schedules: ScheduleStatus[]; paused: boolean }
   | { type: 'schedule.saved'; schedule: ScheduleStatus }
@@ -373,7 +384,7 @@ export type ServerFrame =
   | { type: 'workflow.started'; name: string; session_id: string; run_id: string; max_cost_usd: number | null }
   | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry' | 'escalated'; ms?: number; cost_usd?: number; detail?: string }
   | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded' | 'escalated'; cost_usd: number; outputs: Record<string, unknown>; error?: string; resumable?: boolean }
-  | { type: 'secrets.list'; secrets: { name: string; hint: string; length: number; updated_at: number; source: 'db' | 'env' }[] }
+  | { type: 'secrets.list'; secrets: ChaveResumo[] }
   | { type: 'canais.estado'; tipos: TipoDeCanalResumo[]; canais: EstadoDoCanal[]; aviso?: string; criado?: string }
   | { type: 'role.detail'; role: RoleDetail; policies: string[]; native_tools: string[] }
   | { type: 'role.saved'; name: string }
@@ -441,6 +452,48 @@ export interface RequisitoDePlugin {
   descricao: string
   obrigatorio: boolean
   definida: boolean
+}
+
+export interface ChaveResumo {
+  name: string
+  hint: string
+  length: number
+  updated_at: number
+  source: 'db' | 'env'
+  usos: { tipo: 'modelo' | 'conector' | 'plugin' | 'canal'; nome: string }[]
+  testavel: boolean
+}
+
+export interface LimitesDeGasto {
+  global_month_usd: number | null
+  automation_month_usd: number | null
+  agents: Record<string, number | null>
+}
+
+export interface PrecoDeModelo {
+  chave: string
+  input: number | null
+  output: number | null
+  cache_read: number | null
+  cache_write: number | null
+}
+
+export interface VariavelDoConector {
+  nome: string
+  valor: string
+  chave: string | null
+  definida?: boolean
+}
+
+export interface ConectorEditavel {
+  name: string
+  transporte: 'stdio' | 'http'
+  command: string
+  args: string[]
+  url: string
+  env: VariavelDoConector[]
+  headers: VariavelDoConector[]
+  enabled: boolean
 }
 
 export interface PluginResumo {
