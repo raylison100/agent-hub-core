@@ -27,7 +27,7 @@ export class BudgetExceededError extends Error {
     readonly spentUsd: number,
     readonly limitUsd: number,
   ) {
-    super(`Orcamento de ${scope} excedido: ${spentUsd.toFixed(4)} de ${limitUsd.toFixed(4)} USD`)
+    super(`Orçamento de ${scope} excedido: ${spentUsd.toFixed(4)} de ${limitUsd.toFixed(4)} USD`)
   }
 }
 
