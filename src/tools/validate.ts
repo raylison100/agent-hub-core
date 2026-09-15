@@ -13,14 +13,14 @@ const ajv = new Ajv({
   allErrors: true,
 })
 
-const compiled = new WeakMap<ToolDefinition, ValidateFunction>()
+const compiled = new WeakMap<ToolDefinition, ValidateFunction | null>()
 
-/** Funil de validacao: parse, schema e remocao de campos desconhecidos. */
+/** Funil de validacao: parse, schema e remocao de campos desconhecidos. Schema que o validador nao compila deixa os argumentos passarem. */
 export function validateCall(def: ToolDefinition, rawArgs: unknown): ValidationResult {
   const parsed = parse(rawArgs)
   if (!parsed.ok) return parsed
   const validate = compile(def)
-  if (validate(parsed.args)) return { ok: true, args: parsed.args }
+  if (!validate || validate(parsed.args)) return { ok: true, args: parsed.args }
   const detail = (validate.errors ?? [])
     .map((e) => `${e.instancePath || '/'} ${e.message ?? ''}`.trim())
     .join('; ')
@@ -40,10 +40,15 @@ function parse(raw: unknown): ValidationResult {
   return { ok: true, args: { ...(raw as Record<string, unknown>) } }
 }
 
-function compile(def: ToolDefinition): ValidateFunction {
-  const cached = compiled.get(def)
-  if (cached) return cached
-  const fn = ajv.compile(def.inputSchema)
+function compile(def: ToolDefinition): ValidateFunction | null {
+  if (compiled.has(def)) return compiled.get(def) ?? null
+  const { $schema: _dialeto, ...schema } = def.inputSchema as Record<string, unknown>
+  let fn: ValidateFunction | null
+  try {
+    fn = ajv.compile(schema)
+  } catch {
+    fn = null
+  }
   compiled.set(def, fn)
   return fn
 }

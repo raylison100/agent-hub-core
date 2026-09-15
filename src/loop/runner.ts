@@ -337,7 +337,11 @@ export class AgentRunner {
         continue
       }
 
-      const outcomes = await Promise.all(result.toolCalls.map((call) => this.executeCall(call, tools)))
+      const outcomes = await Promise.all(
+        result.toolCalls.map((call) =>
+          this.executeCall(call, tools).catch((err: unknown) => ({ part: errorResult(call, `falha ao executar ${call.name}: ${describe(err)}`), invalid: false })),
+        ),
+      )
       const results: ToolResultPart[] = []
       let anyInvalid = false
       for (const [i, outcome] of outcomes.entries()) {
