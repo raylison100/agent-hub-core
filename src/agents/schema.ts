@@ -172,12 +172,14 @@ export const ScheduleSchema = z
     at: z.number().int().positive().optional(),
     timezone: z.string().default('UTC'),
     agent: z.string(),
+    role: z.string().optional(),
     workspace: z.string(),
     prompt: z.string().min(1),
     mode: z.enum(['draft', 'normal']).default('draft'),
     budget: z.object({ run_usd: z.number().nonnegative(), day_usd: z.number().nonnegative() }),
     overlap: z.enum(['queue', 'skip']).default('skip'),
     missed: z.enum(['skip', 'run_once']).default('skip'),
+    notify: z.array(z.enum(['telegram'])).default([]),
     enabled: z.boolean().default(true),
   })
   .refine((s) => Boolean(s.cron) !== Boolean(s.at), { message: 'informe cron ou at, nunca ambos' })

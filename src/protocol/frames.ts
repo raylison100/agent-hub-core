@@ -30,14 +30,18 @@ export interface ScheduleSpec {
   at?: number
   timezone: string
   agent: string
+  role?: string
   workspace: string
   prompt: string
   mode: 'draft' | 'normal'
   budget: { run_usd: number; day_usd: number }
   overlap: 'queue' | 'skip'
   missed: 'skip' | 'run_once'
+  notify?: AutomationChannel[]
   enabled: boolean
 }
+
+export type AutomationChannel = 'telegram'
 
 export interface ScheduleStatus extends ScheduleSpec {
   source: 'file' | 'db'
@@ -276,7 +280,18 @@ export type ServerFrame =
   | { type: 'schedule.deleted'; id: string }
   | { type: 'automation.state'; paused: boolean }
   | { type: 'automation.started'; kind: 'schedule' | 'trigger'; id: string; session_id: string; run_id: string }
-  | { type: 'automation.finished'; kind: 'schedule' | 'trigger'; id: string; session_id: string; run_id: string; stop: string; cost_usd: number }
+  | {
+      type: 'automation.finished'
+      kind: 'schedule' | 'trigger'
+      id: string
+      session_id: string
+      run_id: string
+      stop: string
+      cost_usd: number
+      workspace?: string
+      notify?: AutomationChannel[]
+      text?: string
+    }
   | { type: 'automation.error'; kind: 'schedule' | 'trigger'; id: string; message: string }
   | { type: 'automation.runs'; runs: AutomationRun[] }
   | {
