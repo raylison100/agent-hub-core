@@ -255,6 +255,7 @@ export type ClientFrame =
   | { type: 'canal.remover_pessoa'; canal: string; pessoa: string }
   | { type: 'canal.apelidar'; canal: string; pessoa: string; apelido: string }
   | { type: 'canal.testar'; canal: string }
+  | { type: 'canal.enviar'; canal: string; texto: string; session_id?: string; workspace?: string }
   | { type: 'canal.apagar'; canal: string }
   | { type: 'fs.list'; session_id?: string; workspace?: string; path?: string }
   | { type: 'fs.read'; session_id?: string; workspace?: string; path: string; max_chars?: number }
