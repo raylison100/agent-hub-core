@@ -3,8 +3,8 @@ import type { RoleDetail } from '../protocol/frames.js'
 import { parseRole } from './load.js'
 import type { AgentRole } from './schema.js'
 
-/** Monta o Markdown com frontmatter de um papel e confere que ele volta igual pelo parser. */
-export function serializeRole(role: RoleDetail): string {
+/** Monta o Markdown com frontmatter de um papel e confere que ele volta igual pelo parser; `preservar` mantem campos que a interface nao edita. */
+export function serializeRole(role: RoleDetail, preservar: Pick<AgentRole, 'delegates' | 'phases'> = {}): string {
   const front: Record<string, unknown> = {
     name: role.name,
     description: role.description,
@@ -13,6 +13,8 @@ export function serializeRole(role: RoleDetail): string {
   if (role.tools.native.length || role.tools.mcp.length) front.tools = { native: role.tools.native, mcp: role.tools.mcp }
   if (role.skills.length) front.skills = role.skills
   if (role.policy) front.policy = role.policy
+  if (preservar.delegates?.length) front.delegates = preservar.delegates
+  if (preservar.phases?.length) front.phases = preservar.phases
   if (role.max_steps) front.max_steps = role.max_steps
   const budget: Record<string, number> = {}
   if (role.budget.run_usd !== undefined) budget.run_usd = role.budget.run_usd

@@ -22,6 +22,13 @@ describe('arquivo de papel', () => {
     expect(lido).toEqual({ ...papel, budget: { run_usd: 0.5, session_usd: undefined } })
   })
 
+  it('preserva delegacao e fases que a interface nao edita', () => {
+    const fases = [{ name: 'entender', tools: ['read_file'], until: { tool_called: 'plan' } }]
+    const lido = parseRole('revisor.md', serializeRole(papel, { delegates: ['arquiteto'], phases: fases }))
+    expect(lido.delegates).toEqual(['arquiteto'])
+    expect(lido.phases?.[0]?.name).toBe('entender')
+  })
+
   it('omite campos vazios e recusa papel invalido', () => {
     const texto = serializeRole({ ...papel, tools: { native: [], mcp: [] }, skills: [], policy: null, max_steps: null, budget: {} })
     expect(texto).not.toContain('tools:')
