@@ -43,7 +43,7 @@ export interface ScheduleSpec {
 
 export type CanalId = 'telegram' | 'slack' | 'discord' | 'whatsapp'
 
-export type AutomationChannel = CanalId
+export type AutomationChannel = string
 
 export interface PessoaDoCanal {
   id: string
@@ -52,17 +52,27 @@ export interface PessoaDoCanal {
   conversa?: string
 }
 
-export interface EstadoDoCanal {
+export interface TipoDeCanalResumo {
   id: CanalId
+  nome: string
+  descricao: string
+  disponivel: boolean
+}
+
+export interface EstadoDoCanal {
+  id: string
+  tipo: CanalId
   nome: string
   descricao: string
   passos: string[]
   campos: { chave: string; rotulo: string; segredo: boolean; obrigatorio: boolean; ajuda?: string; exemplo?: string; preenchido: boolean; dica: string }[]
   configurado: boolean
   conta: string | null
+  link: string | null
   ligado: boolean
   rodando: boolean
   erro: string | null
+  padrao: { agente?: string; papel?: string; workspace?: string }
   permitidos: PessoaDoCanal[]
   pedidos: (PessoaDoCanal & { em: number })[]
 }
@@ -212,12 +222,14 @@ export type ClientFrame =
   | { type: 'secrets.set'; name: string; value: string }
   | { type: 'secrets.delete'; name: string }
   | { type: 'canais.estado' }
-  | { type: 'canal.salvar'; canal: CanalId; valores: Record<string, string> }
-  | { type: 'canal.ligar'; canal: CanalId; ligado: boolean }
-  | { type: 'canal.permitir'; canal: CanalId; pessoa: string }
-  | { type: 'canal.remover_pessoa'; canal: CanalId; pessoa: string }
-  | { type: 'canal.testar'; canal: CanalId }
-  | { type: 'canal.apagar'; canal: CanalId }
+  | { type: 'canal.criar'; tipo: CanalId; nome: string }
+  | { type: 'canal.salvar'; canal: string; valores: Record<string, string> }
+  | { type: 'canal.padrao'; canal: string; nome?: string; agente?: string; papel?: string; workspace?: string }
+  | { type: 'canal.ligar'; canal: string; ligado: boolean }
+  | { type: 'canal.permitir'; canal: string; pessoa: string }
+  | { type: 'canal.remover_pessoa'; canal: string; pessoa: string }
+  | { type: 'canal.testar'; canal: string }
+  | { type: 'canal.apagar'; canal: string }
   | { type: 'fs.list'; session_id?: string; workspace?: string; path?: string }
   | { type: 'fs.read'; session_id?: string; workspace?: string; path: string; max_chars?: number }
   | { type: 'fs.tree'; session_id?: string; workspace?: string; path?: string; depth?: number }
@@ -341,7 +353,7 @@ export type ServerFrame =
   | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry' | 'escalated'; ms?: number; cost_usd?: number; detail?: string }
   | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded' | 'escalated'; cost_usd: number; outputs: Record<string, unknown>; error?: string; resumable?: boolean }
   | { type: 'secrets.list'; secrets: { name: string; hint: string; length: number; updated_at: number; source: 'db' | 'env' }[] }
-  | { type: 'canais.estado'; canais: EstadoDoCanal[]; aviso?: string }
+  | { type: 'canais.estado'; tipos: TipoDeCanalResumo[]; canais: EstadoDoCanal[]; aviso?: string; criado?: string }
   | { type: 'fs.list'; path: string; entries: { name: string; dir: boolean }[] }
   | { type: 'fs.read'; path: string; text: string; truncated: boolean }
   | { type: 'fs.tree'; path: string; text: string }

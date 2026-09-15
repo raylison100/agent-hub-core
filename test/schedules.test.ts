@@ -23,7 +23,8 @@ describe('ScheduleSchema', () => {
     expect(spec.notify).toEqual(['telegram'])
   })
 
-  it('recusa canal desconhecido', () => {
-    expect(() => ScheduleSchema.parse({ ...base, notify: ['fax'] })).toThrow()
+  it('aceita o id de um canal criado e recusa nome fora do padrao', () => {
+    expect(ScheduleSchema.parse({ ...base, notify: ['bot-de-ideias'] }).notify).toEqual(['bot-de-ideias'])
+    expect(() => ScheduleSchema.parse({ ...base, notify: ['Bot De Ideias'] })).toThrow()
   })
 })
