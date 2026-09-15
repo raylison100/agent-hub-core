@@ -48,8 +48,10 @@ export type AutomationChannel = string
 export interface PessoaDoCanal {
   id: string
   nome?: string
+  apelido?: string
   usuario?: string
   conversa?: string
+  foto?: string
 }
 
 export interface TipoDeCanalResumo {
@@ -69,6 +71,7 @@ export interface EstadoDoCanal {
   configurado: boolean
   conta: string | null
   link: string | null
+  rotuloDoId: string
   ligado: boolean
   rodando: boolean
   erro: string | null
@@ -228,6 +231,7 @@ export type ClientFrame =
   | { type: 'canal.ligar'; canal: string; ligado: boolean }
   | { type: 'canal.permitir'; canal: string; pessoa: string }
   | { type: 'canal.remover_pessoa'; canal: string; pessoa: string }
+  | { type: 'canal.apelidar'; canal: string; pessoa: string; apelido: string }
   | { type: 'canal.testar'; canal: string }
   | { type: 'canal.apagar'; canal: string }
   | { type: 'fs.list'; session_id?: string; workspace?: string; path?: string }
