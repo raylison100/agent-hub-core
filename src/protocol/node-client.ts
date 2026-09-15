@@ -50,7 +50,7 @@ export class NodeDaemonClient {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.readyWaiters = this.readyWaiters.filter((w) => w.resolve !== resolve)
-        reject(new Error('daemon nao respondeu a tempo'))
+        reject(new Error('daemon não respondeu a tempo'))
       }, timeoutMs)
       this.readyWaiters.push({
         resolve: () => {
@@ -114,12 +114,12 @@ export class NodeDaemonClient {
       else this.plain({ type: 'auth', token: this.opts.token, protocol_version: protocolVersion, client: this.opts.client })
     })
     socket.on('message', (raw) => void this.receive(JSON.parse(String(raw)) as RelayToClient))
-    socket.on('error', (err) => this.log(`conexao: ${err.message}`))
+    socket.on('error', (err) => this.log(`conexão: ${err.message}`))
     socket.on('close', () => {
       this.online = false
-      for (const w of this.waiters.splice(0)) w.reject(new Error('conexao encerrada'))
+      for (const w of this.waiters.splice(0)) w.reject(new Error('conexão encerrada'))
       if (this.stopped) {
-        for (const w of this.readyWaiters.splice(0)) w.reject(new Error('conexao encerrada'))
+        for (const w of this.readyWaiters.splice(0)) w.reject(new Error('conexão encerrada'))
         return
       }
       const delay = backoffMs[Math.min(this.attempts, backoffMs.length - 1)]!

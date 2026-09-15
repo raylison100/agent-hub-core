@@ -174,7 +174,7 @@ export function interpret(hook: HookConfig, res: ExecResult): HookDecision {
     }
     return { allow: true }
   }
-  if (res.code !== 0) return { allow: false, reason: res.stderr.trim() || `hook saiu com codigo ${res.code}` }
+  if (res.code !== 0) return { allow: false, reason: res.stderr.trim() || `hook saiu com código ${res.code}` }
   if (json && json.decision === 'deny') return { allow: false, reason: String(json.reason ?? 'negado pelo hook') }
   return { allow: true, output: json && typeof json.output === 'string' ? json.output : undefined }
 }

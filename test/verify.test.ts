@@ -36,7 +36,7 @@ describe('verifyRun', () => {
     const dir = workspace()
     const r = verifyRun({ stop: 'end', workspace: dir, appended: resposta('Veja src/loop/planner.ts:3 e src/loop/runner.ts:400.', leu('src/loop/runner.ts')) })
     expect(r.failures.map((f) => f.reason)).toEqual([
-      'cita src/loop/planner.ts, que nao existe no workspace',
+      'cita src/loop/planner.ts, que não existe no workspace',
       'cita src/loop/runner.ts:400, mas o arquivo tem 40 linhas',
     ])
   })
@@ -55,8 +55,8 @@ describe('verifyRun', () => {
 
   it('recusa citacao de exemplo e resposta dizendo que nao achou', () => {
     const dir = workspace()
-    expect(verifyRun({ stop: 'end', workspace: dir, appended: resposta('Ela verifica o processo. [arquivo:linha]', leu('README.md')) }).failures[0]?.reason).toBe('usa citacao de exemplo, sem arquivo real')
-    expect(verifyRun({ stop: 'end', workspace: dir, appended: resposta('A porta padrao nao foi encontrada nos arquivos.', leu('README.md')) }).failures[0]?.reason).toBe('o modelo diz que nao encontrou a resposta')
+    expect(verifyRun({ stop: 'end', workspace: dir, appended: resposta('Ela verifica o processo. [arquivo:linha]', leu('README.md')) }).failures[0]?.reason).toBe('usa citação de exemplo, sem arquivo real')
+    expect(verifyRun({ stop: 'end', workspace: dir, appended: resposta('A porta padrao nao foi encontrada nos arquivos.', leu('README.md')) }).failures[0]?.reason).toBe('o modelo diz que não encontrou a resposta')
     expect(verifyRun({ stop: 'end', workspace: dir, appended: resposta('A funcao selectTools não está definida no código.', leu('README.md')) }).ok).toBe(false)
   })
 

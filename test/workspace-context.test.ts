@@ -59,7 +59,7 @@ describe('loadWorkspaceContext', () => {
     memoria(dir, 'pagamento', 'activate: {"keywords":["pagamento","cobranca"]}\n', 'O gateway recusa centavos.')
     const fora = loadWorkspaceContext(dir, { text: 'ajusta o layout do menu', windowTokens: 100000 })
     expect(fora.memories).toHaveLength(0)
-    expect(fora.ignored[0]?.reason).toContain('ativacao')
+    expect(fora.ignored[0]?.reason).toContain('ativação')
     const dentro = loadWorkspaceContext(dir, { text: 'corrige a cobranca do plano', windowTokens: 100000 })
     expect(dentro.memories.map((m) => m.name)).toEqual(['pagamento'])
   })

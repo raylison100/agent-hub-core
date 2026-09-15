@@ -51,8 +51,8 @@ export function verifyRun(input: VerificationInput, checks: readonly Verificatio
 
   if (checks.includes('resposta')) {
     if (resposta.trim() === '') failures.push({ check: 'resposta', reason: 'resposta vazia' })
-    else if (vazamento.test(resposta)) failures.push({ check: 'resposta', reason: 'resposta comeca com raciocinio vazado' })
-    else if (naoAchou.test(resposta)) failures.push({ check: 'resposta', reason: 'o modelo diz que nao encontrou a resposta' })
+    else if (vazamento.test(resposta)) failures.push({ check: 'resposta', reason: 'resposta começa com raciocínio vazado' })
+    else if (naoAchou.test(resposta)) failures.push({ check: 'resposta', reason: 'o modelo diz que não encontrou a resposta' })
   }
 
   const lido = toolText(input.appended)
@@ -61,7 +61,7 @@ export function verifyRun(input: VerificationInput, checks: readonly Verificatio
   }
 
   if (checks.includes('citacoes') && resposta) {
-    if (citacaoDeExemplo.test(resposta)) failures.push({ check: 'citacoes', reason: 'usa citacao de exemplo, sem arquivo real' })
+    if (citacaoDeExemplo.test(resposta)) failures.push({ check: 'citacoes', reason: 'usa citação de exemplo, sem arquivo real' })
     const vistos = new Set<string>()
     for (const achado of resposta.matchAll(citacao)) {
       const caminho = achado[1]!
@@ -75,7 +75,7 @@ export function verifyRun(input: VerificationInput, checks: readonly Verificatio
       citations += 1
       const arquivo = locate(input.workspace, caminho)
       if (!arquivo) {
-        failures.push({ check: 'citacoes', reason: `cita ${caminho}, que nao existe no workspace` })
+        failures.push({ check: 'citacoes', reason: `cita ${caminho}, que não existe no workspace` })
         continue
       }
       const nome = caminho.split('/').pop()!

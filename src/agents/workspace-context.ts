@@ -133,7 +133,7 @@ export function loadWorkspaceContext(workspace: string, opts: ContextOptions): W
     .filter((m) => {
       if (!m.activate) return true
       const casa = matchesWhen(m.activate, { text: opts.text, workspace })
-      if (!casa) out.ignored.push({ name: m.name, reason: 'regra de ativacao nao casou com o pedido' })
+      if (!casa) out.ignored.push({ name: m.name, reason: 'regra de ativação não casou com o pedido' })
       return casa
     })
     .sort((a, b) => (b.data ?? '').localeCompare(a.data ?? '') || a.name.localeCompare(b.name))

@@ -464,10 +464,10 @@ export class AgentRunner {
     }
     const decision = decide(this.deps.policy, def, validated.args)
     this.deps.emit({ type: 'tool_call', call: { ...call, args: validated.args }, decision })
-    if (decision === 'deny') return { part: errorResult(call, `ferramenta ${def.name} negada pela politica`), invalid: false }
+    if (decision === 'deny') return { part: errorResult(call, `ferramenta ${def.name} negada pela política`), invalid: false }
     if (decision === 'ask') {
       const answer = await this.deps.approve({ ...call, args: validated.args }, def)
-      if (answer === 'deny') return { part: errorResult(call, `ferramenta ${def.name} negada pelo usuario`), invalid: false }
+      if (answer === 'deny') return { part: errorResult(call, `ferramenta ${def.name} negada pelo usuário`), invalid: false }
     }
     const blocked = await this.beforeHook(def.name, validated.args)
     if (blocked) return { part: errorResult(call, blocked), invalid: false }
@@ -517,14 +517,14 @@ export class AgentRunner {
     if (def.name === 'collect') return this.collect(typeof args.task_id === 'string' ? args.task_id : undefined, args.wait !== false)
     if (def.name === 'plan' || def.name === 'done') return `registrado: ${String(args.summary).slice(0, 200)}`
     const tool = this.deps.tools.get(def.name)
-    if (!tool) throw new Error(`ferramenta nao registrada: ${def.name}`)
+    if (!tool) throw new Error(`ferramenta não registrada: ${def.name}`)
     return tool.handler(args, { workspace: this.deps.workspace, runId: this.hookCtx.runId, sessionId: this.hookCtx.sessionId, agent: this.deps.profile.name, signal: this.deps.signal, sandbox: this.deps.sandbox, readRoots: this.skillRoots() })
   }
 
   private async delegate(agent: string, task: string, opts: DelegationOptions): Promise<string> {
     const { profile, delegate } = this.deps
-    if (!delegate) throw new Error('delegacao nao disponivel neste daemon')
-    if (!profile.delegates.includes(agent)) throw new Error(`agente ${agent} nao esta em delegates`)
+    if (!delegate) throw new Error('delegação não disponível neste daemon')
+    if (!profile.delegates.includes(agent)) throw new Error(`agente ${agent} não está em delegates`)
     const result = await delegate(agent, task, opts)
     this.costUsd += result.costUsd
     return renderDelegation(result, agent)
@@ -532,15 +532,15 @@ export class AgentRunner {
 
   private async spawn(agent: string, task: string, opts: DelegationOptions): Promise<string> {
     const { profile, spawn } = this.deps
-    if (!spawn) throw new Error('spawn nao disponivel neste daemon')
-    if (!profile.delegates.includes(agent)) throw new Error(`agente ${agent} nao esta em delegates`)
+    if (!spawn) throw new Error('spawn não disponível neste daemon')
+    if (!profile.delegates.includes(agent)) throw new Error(`agente ${agent} não está em delegates`)
     const handle = await spawn(agent, task, opts)
     return `subagente ${agent} iniciado em segundo plano, task_id ${handle.taskId}. Continue e chame collect para receber o resultado.`
   }
 
   private async collect(taskId: string | undefined, wait: boolean): Promise<string> {
     const { collect } = this.deps
-    if (!collect) throw new Error('collect nao disponivel neste daemon')
+    if (!collect) throw new Error('collect não disponível neste daemon')
     const results = await collect(taskId, wait)
     for (const r of results) this.costUsd += r.costUsd
     if (results.length === 0) return wait ? 'nenhum subagente pendente' : 'nenhum resultado pronto ainda; chame collect com wait=true para esperar'
@@ -549,7 +549,7 @@ export class AgentRunner {
 
   private loadSkill(name: string): string {
     const skill = this.deps.skills.get(name)
-    if (!skill || !this.deps.profile.skills.includes(name)) throw new Error(`skill nao disponivel: ${name}`)
+    if (!skill || !this.deps.profile.skills.includes(name)) throw new Error(`skill não disponível: ${name}`)
     this.deps.emit({ type: 'skills_loaded', names: [name] })
     return skillInstructions(skill)
   }

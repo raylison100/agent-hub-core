@@ -26,7 +26,7 @@ export interface PricingTable {
 
 export class PricingMissingError extends Error {
   constructor(readonly key: string, readonly field?: string) {
-    super(field ? `Preco de ${field} ausente para ${key}` : `Modelo ${key} sem preco na tabela`)
+    super(field ? `Preço de ${field} ausente para ${key}` : `Modelo ${key} sem preço na tabela`)
   }
 }
 

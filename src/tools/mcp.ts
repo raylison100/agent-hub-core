@@ -74,7 +74,7 @@ export class McpBridge {
   async readResource(name: string, uri: string): Promise<string> {
     const result = (await this.client(name).readResource({ uri })) as { contents?: { text?: string; blob?: string; mimeType?: string; uri: string }[] }
     return (result.contents ?? [])
-      .map((c) => (typeof c.text === 'string' ? c.text : `[conteudo binario ${c.mimeType ?? ''} em ${c.uri}]`))
+      .map((c) => (typeof c.text === 'string' ? c.text : `[conteúdo binário ${c.mimeType ?? ''} em ${c.uri}]`))
       .join('\n')
   }
 
@@ -96,7 +96,7 @@ export class McpBridge {
 
   private client(name: string): Client {
     const s = this.servers.get(name)
-    if (!s) throw new Error(`servidor MCP nao conectado: ${name}`)
+    if (!s) throw new Error(`servidor MCP não conectado: ${name}`)
     return s.client
   }
 
@@ -148,7 +148,7 @@ function resolveEnv(declared: Record<string, string>, env: NodeJS.ProcessEnv): R
 function expand(value: string, env: NodeJS.ProcessEnv): string {
   return value.replace(/\$\{?([A-Z0-9_]+)\}?/g, (_, name: string) => {
     const resolved = env[name]
-    if (resolved === undefined) throw new Error(`variavel ${name} nao definida para o MCP`)
+    if (resolved === undefined) throw new Error(`variável ${name} não definida para o MCP`)
     return resolved
   })
 }

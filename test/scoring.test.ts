@@ -79,7 +79,7 @@ describe('scoreAgents', () => {
   it('exclui por capacidade abaixo do minimo', () => {
     const r = scoreAgents(base, priceOf, scoring, { intent: null, promptTokens: 100 })
     const gratis = r.ranking.find((x) => x.agent === 'gratis')
-    expect(gratis?.excluded).toContain('abaixo do minimo')
+    expect(gratis?.excluded).toContain('abaixo do mínimo')
     expect(r.chosen?.agent).toBe('barato')
   })
 
@@ -104,7 +104,7 @@ describe('scoreAgents', () => {
       { intent: 'implementar', promptTokens: 100, unavailable: (n) => (n === 'barato' ? 'sem chave' : null) },
     )
     expect(r.ranking.find((x) => x.agent === 'barato')?.excluded).toBe('sem chave')
-    expect(r.ranking.find((x) => x.agent === 'sem-preco')?.excluded).toContain('sem preco')
+    expect(r.ranking.find((x) => x.agent === 'sem-preco')?.excluded).toContain('sem preço')
     expect(r.chosen?.agent).toBe('caro')
   })
 
@@ -136,7 +136,7 @@ describe('scoreAgents', () => {
 
   it('respeita a lista exclude do routing.json', () => {
     const r = scoreAgents(base, priceOf, ScoringSchema.parse({ exclude: ['barato'] }), { intent: 'implementar', promptTokens: 100 })
-    expect(r.ranking.find((x) => x.agent === 'barato')?.excluded).toContain('excluido')
+    expect(r.ranking.find((x) => x.agent === 'barato')?.excluded).toContain('excluído')
     expect(r.chosen?.agent).toBe('caro')
   })
 
@@ -148,7 +148,7 @@ describe('scoreAgents', () => {
     const semPedido = scoreAgents(comDelegacao, priceOf, scoring, { intent: null, promptTokens: 100 })
     expect(semPedido.chosen?.agent).toBe('barato')
     const r = scoreAgents(comDelegacao, priceOf, scoring, { intent: null, promptTokens: 100, needsDelegation: true })
-    expect(r.ranking.find((x) => x.agent === 'barato')?.excluded).toBe('nao delega subtarefas')
+    expect(r.ranking.find((x) => x.agent === 'barato')?.excluded).toBe('não delega subtarefas')
     expect(r.chosen?.agent).toBe('caro')
   })
 })
@@ -246,7 +246,7 @@ describe('classe de latencia', () => {
 
   it('pedido interativo exclui quem so serve para lote', () => {
     const r = scoreAgents(dupla, priceOf, scoring, { intent: null, promptTokens: 100 })
-    expect(r.ranking.find((x) => x.agent === 'lento')?.excluded).toBe('so serve para tarefa em lote')
+    expect(r.ranking.find((x) => x.agent === 'lento')?.excluded).toBe('só serve para tarefa em lote')
     expect(r.chosen?.agent).toBe('rapido')
   })
 

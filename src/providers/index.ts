@@ -27,7 +27,7 @@ const defaultKeyEnv: Record<string, string> = {
 
 export class MissingApiKeyError extends Error {
   constructor(readonly envName: string, readonly provider: string) {
-    super(`Variavel ${envName} nao definida para o provedor ${provider}`)
+    super(`Variável ${envName} não definida para o provedor ${provider}`)
   }
 }
 

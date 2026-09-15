@@ -151,7 +151,7 @@ export function renderArgs(args: Record<string, unknown>, context: Record<string
 /** Condicao de retry: `campo op valor`, com op em ==, !=, >, <, >=, <=, contains, matches. */
 export function evaluateCondition(expr: string, result: StepResult): boolean {
   const m = /^\s*([\w.]+)\s*(==|!=|>=|<=|>|<|contains|matches)\s*(.+?)\s*$/.exec(expr)
-  if (!m) throw new Error(`condicao invalida: ${expr}`)
+  if (!m) throw new Error(`condição inválida: ${expr}`)
   const left = valueAt(result, m[1]!)
   const rawRight = m[3]!
   const right = /^-?\d+(\.\d+)?$/.test(rawRight) ? Number(rawRight) : rawRight.replace(/^['"]|['"]$/g, '')
@@ -195,7 +195,7 @@ function validateReferences(wf: Workflow): void {
     const from = wf.steps.findIndex((s) => s.id === retry.step)
     const to = wf.steps.findIndex((s) => s.id === step.id)
     if (from === -1) throw new Error(`retry de ${step.id} aponta para etapa inexistente: ${retry.step}`)
-    if (from > to) throw new Error(`retry de ${step.id} precisa apontar para uma etapa anterior ou a propria`)
+    if (from > to) throw new Error(`retry de ${step.id} precisa apontar para uma etapa anterior ou a própria`)
   }
 }
 

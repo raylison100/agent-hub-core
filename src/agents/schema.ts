@@ -190,7 +190,7 @@ export type ScheduleParsed = z.infer<typeof ScheduleSchema>
 export const TriggerSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
   source: z.enum(['gitlab', 'github', 'generic']),
-  secret_ref: z.string().regex(/^\$[A-Z0-9_]+$/, 'secret_ref deve ser o nome de uma variavel de ambiente com $'),
+  secret_ref: z.string().regex(/^\$[A-Z0-9_]+$/, 'secret_ref deve ser o nome de uma variável de ambiente com $'),
   filter: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({}),
   agent: z.string(),
   workspace: z.string(),

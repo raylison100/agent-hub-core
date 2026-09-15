@@ -140,7 +140,7 @@ const editFile: RegisteredTool = {
     const content = readFileSync(file, 'utf8')
     const oldText = str(args.old_text)!
     const first = content.indexOf(oldText)
-    if (first === -1) throw new Error('trecho antigo nao encontrado')
+    if (first === -1) throw new Error('trecho antigo não encontrado')
     if (content.indexOf(oldText, first + 1) !== -1) throw new Error('trecho antigo ocorre mais de uma vez')
     writeFileSync(file, content.slice(0, first) + str(args.new_text)! + content.slice(first + oldText.length), 'utf8')
     return `editado ${relative(ctx.workspace, file)}`
@@ -209,12 +209,12 @@ const git: RegisteredTool = {
   async handler(args, ctx) {
     const list = (args.args as string[]).map(String)
     const sub = list[0]!
-    if (!gitAllowed.has(sub)) throw new Error(`subcomando git nao permitido: ${sub}`)
+    if (!gitAllowed.has(sub)) throw new Error(`subcomando git não permitido: ${sub}`)
     if (sub === 'checkout' && list[1] !== '-b') throw new Error('checkout permitido apenas com -b para branch nova')
-    if (list.some((a) => a === '--force' || a === '-f')) throw new Error('flags de forca nao permitidas')
+    if (list.some((a) => a === '--force' || a === '-f')) throw new Error('flags de força não permitidas')
     const dir = resolveInside(ctx.workspace, '.')
     if (!isRepoRoot(dir)) {
-      return `sem repositorio git nesta pasta: ${dir}. Sem repositorio proprio, o git subiria para o repositorio de uma pasta acima e mostraria arquivos fora do workspace. Escolha a raiz do repositorio como workspace.`
+      return `sem repositório git nesta pasta: ${dir}. Sem repositório próprio, o git subiria para o repositório de uma pasta acima e mostraria arquivos fora do workspace. Escolha a raiz do repositório como workspace.`
     }
     const quoted = list.map(shellQuote).join(' ')
     return runShell(`git ${quoted}`, dir, defaultTimeoutMs, ctx)
@@ -242,7 +242,7 @@ function runShell(command: string, cwd: string, timeoutMs: number, ctx: ToolCont
     child.on('close', (code, signal) => {
       clearTimeout(timer)
       let output = Buffer.concat(chunks).toString('utf8').slice(0, outputLimit)
-      if (size > outputLimit) output += `\n[saida truncada em ${outputLimit} bytes de ${size}]`
+      if (size > outputLimit) output += `\n[saída truncada em ${outputLimit} bytes de ${size}]`
       const exit = signal ? `sinal ${signal}` : `exit_code ${code ?? 0}`
       resolve(`${exit}\n${output}`)
     })

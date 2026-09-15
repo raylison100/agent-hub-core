@@ -89,7 +89,7 @@ export function loadPlugins(entries: PluginEntry[], overrides: Record<string, Pr
     .map((e) => {
       const dir = e.git ? gitPluginDir(base, e.git) : resolve(base, e.path!)
       if (!existsSync(dir)) {
-        const message = e.git ? `plugin git ainda nao clonado; rode agent-hub-daemon plugins sync` : 'plugin nao encontrado'
+        const message = e.git ? `plugin git ainda não clonado; rode agent-hub-daemon plugins sync` : 'plugin não encontrado'
         return { name: basename(dir), dir, skills: new Map(), profiles: new Map(), mcp: {}, hooks: [], errors: [{ file: dir, message }] }
       }
       return loadPlugin(dir, overrides)

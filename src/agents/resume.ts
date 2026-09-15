@@ -68,8 +68,8 @@ export function parseResume(text: string): SessionResume | null {
 /** Versao legivel do ponto de retomada, usada na interface e ao bifurcar a sessao. */
 export function renderResume(r: SessionResume): string {
   const blocos = [`Tarefa: ${r.tarefa}`, `Status: ${r.status}`]
-  if (r.proximo_passo) blocos.push(`Proximo passo: ${r.proximo_passo}`)
-  if (r.pendencias.length) blocos.push(`Pendencias:\n${r.pendencias.map((p) => `- ${p}`).join('\n')}`)
+  if (r.proximo_passo) blocos.push(`Próximo passo: ${r.proximo_passo}`)
+  if (r.pendencias.length) blocos.push(`Pendências:\n${r.pendencias.map((p) => `- ${p}`).join('\n')}`)
   if (r.arquivos.length) blocos.push(`Arquivos:\n${r.arquivos.map((a) => `- ${a}`).join('\n')}`)
   if (r.notas.length) blocos.push(`Notas:\n${r.notas.map((n) => `- ${n}`).join('\n')}`)
   return blocos.join('\n\n')

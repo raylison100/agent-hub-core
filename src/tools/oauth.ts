@@ -103,7 +103,7 @@ export async function discover(issuer: string, fetchImpl: typeof fetch = fetch):
       continue
     }
   }
-  throw new Error(`nao achei os metadados de OAuth em ${issuer}`)
+  throw new Error(`não achei os metadados de OAuth em ${issuer}`)
 }
 
 /** Registro dinamico de cliente do RFC 7591, para servidor que nao exige cadastro manual. */
@@ -119,8 +119,8 @@ export async function registerClient(registerUrl: string, redirectUri: string, f
       token_endpoint_auth_method: 'none',
     }),
   })
-  if (!res.ok) throw new Error(`registro dinamico devolveu ${res.status}`)
+  if (!res.ok) throw new Error(`registro dinâmico devolveu ${res.status}`)
   const data = (await res.json()) as { client_id?: string; client_secret?: string }
-  if (!data.client_id) throw new Error('registro dinamico sem client_id')
+  if (!data.client_id) throw new Error('registro dinâmico sem client_id')
   return { client_id: data.client_id, client_secret: data.client_secret }
 }

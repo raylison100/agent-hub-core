@@ -27,7 +27,7 @@ export const hookCatalog: CatalogHook[] = [
   {
     id: 'lint-apos-edicao',
     title: 'Conferir lint depois de editar',
-    detail: 'Roda eslint so no arquivo editado e devolve o resultado para o agente ver.',
+    detail: 'Roda eslint só no arquivo editado e devolve o resultado para o agente ver.',
     hook: {
       event: 'tool.after',
       command: 'npx --no-install eslint "$AGENT_HUB_TOOL_PATH" 2>&1 | tail -20 || true',
@@ -63,8 +63,8 @@ export const hookCatalog: CatalogHook[] = [
   },
   {
     id: 'parar-no-estouro-de-orcamento',
-    title: 'Registrar estouro de orcamento',
-    detail: 'Guarda em ~/.agent-hub/orcamento.log todo run que bateu no teto, para voce revisar depois.',
+    title: 'Registrar estouro de orçamento',
+    detail: 'Guarda em ~/.agent-hub/orcamento.log todo run que bateu no teto, para você revisar depois.',
     hook: {
       event: 'budget.exceeded',
       command: 'echo "$(date -Is) $AGENT_HUB_AGENT $AGENT_HUB_MESSAGE" >> "$HOME/.agent-hub/orcamento.log"',

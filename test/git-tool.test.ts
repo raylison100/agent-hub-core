@@ -18,7 +18,7 @@ describe('ferramenta git', () => {
   it('recusa pasta sem repositorio proprio em vez de subir para o repositorio de cima', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'agent-hub-sem-git-'))
     const saida = await rodar(dir)
-    expect(saida).toContain('sem repositorio git nesta pasta')
+    expect(saida).toContain('sem repositório git nesta pasta')
     expect(saida).not.toContain('exit_code')
   })
 

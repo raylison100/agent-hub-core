@@ -23,11 +23,11 @@ const memoryRead: RegisteredTool = {
   },
   async handler(args, ctx) {
     const itens = loadMemories(ctx.workspace)
-    if (itens.length === 0) return 'memoria vazia neste workspace'
+    if (itens.length === 0) return 'memória vazia neste workspace'
     const name = typeof args.name === 'string' ? args.name : undefined
-    if (!name) return itens.map((m) => `${m.name}: ${m.description || '(sem descricao)'}${m.data ? ` [${m.data}]` : ''}`).join('\n')
+    if (!name) return itens.map((m) => `${m.name}: ${m.description || '(sem descrição)'}${m.data ? ` [${m.data}]` : ''}`).join('\n')
     const achado = itens.find((m) => m.name === name)
-    return achado ? `${achado.file}\n\n${achado.body}` : `item nao encontrado: ${name}. Itens: ${itens.map((m) => m.name).join(', ')}`
+    return achado ? `${achado.file}\n\n${achado.body}` : `item não encontrado: ${name}. Itens: ${itens.map((m) => m.name).join(', ')}`
   },
 }
 
@@ -56,12 +56,12 @@ const memoryWrite: RegisteredTool = {
     const name = slug(String(args.name))
     const alvo = resolveInside(ctx.workspace, `${memoryDir}/${name}.md`)
     if (args.apagar === true) {
-      if (!existsSync(alvo)) return `nao existia: ${name}`
+      if (!existsSync(alvo)) return `não existia: ${name}`
       writeFileSync(alvo, '')
-      return `apagado o conteudo de ${memoryDir}/${name}.md`
+      return `apagado o conteúdo de ${memoryDir}/${name}.md`
     }
     const body = String(args.body ?? '').trim()
-    if (!body) throw new Error('body vazio: um item de memoria sem o fato nao serve para nada')
+    if (!body) throw new Error('body vazio: um item de memória sem o fato não serve para nada')
     const activate: Record<string, unknown> = {}
     if (Array.isArray(args.keywords) && args.keywords.length > 0) activate.keywords = args.keywords.map(String)
     if (Array.isArray(args.files) && args.files.length > 0) activate.files = args.files.map(String)
@@ -130,6 +130,6 @@ function slug(raw: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
-  if (!limpo) throw new Error(`nome invalido: ${raw}`)
+  if (!limpo) throw new Error(`nome inválido: ${raw}`)
   return limpo
 }

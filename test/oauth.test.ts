@@ -78,7 +78,7 @@ describe('descoberta', () => {
   })
 
   it('avisa quando nao acha os metadados', async () => {
-    await expect(discover('https://auth.exemplo', (async () => respostaJson({}, false)) as unknown as typeof fetch)).rejects.toThrow('nao achei os metadados')
+    await expect(discover('https://auth.exemplo', (async () => respostaJson({}, false)) as unknown as typeof fetch)).rejects.toThrow('não achei os metadados')
   })
 
   it('le o resource_metadata do cabecalho de 401', () => {

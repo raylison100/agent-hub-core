@@ -24,16 +24,16 @@ export function validateCall(def: ToolDefinition, rawArgs: unknown): ValidationR
   const detail = (validate.errors ?? [])
     .map((e) => `${e.instancePath || '/'} ${e.message ?? ''}`.trim())
     .join('; ')
-  return { ok: false, error: `argumentos invalidos para ${def.name}: ${detail}` }
+  return { ok: false, error: `argumentos inválidos para ${def.name}: ${detail}` }
 }
 
 function parse(raw: unknown): ValidationResult {
-  if (raw === undefined || raw === null) return { ok: false, error: 'argumentos nao sao JSON valido' }
+  if (raw === undefined || raw === null) return { ok: false, error: 'argumentos não são JSON válido' }
   if (typeof raw === 'string') {
     try {
       return parse(JSON.parse(raw))
     } catch {
-      return { ok: false, error: 'argumentos nao sao JSON valido' }
+      return { ok: false, error: 'argumentos não são JSON válido' }
     }
   }
   if (typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, error: 'argumentos devem ser um objeto' }

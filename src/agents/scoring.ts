@@ -147,15 +147,15 @@ function exclusionReason(
   scoring: Scoring,
   input: ScoreInput,
 ): string | undefined {
-  if (scoring.exclude.includes(c.name)) return 'excluido em routing.json'
-  if (input.needsVision && !c.vision) return 'nao le imagens'
-  if (input.needsDelegation && !c.delegates) return 'nao delega subtarefas'
-  if ((input.latency ?? 'interativo') === 'interativo' && c.latency === 'lote') return 'so serve para tarefa em lote'
+  if (scoring.exclude.includes(c.name)) return 'excluído em routing.json'
+  if (input.needsVision && !c.vision) return 'não lê imagens'
+  if (input.needsDelegation && !c.delegates) return 'não delega subtarefas'
+  if ((input.latency ?? 'interativo') === 'interativo' && c.latency === 'lote') return 'só serve para tarefa em lote'
   const unavailable = input.unavailable?.(c.name)
   if (unavailable) return unavailable
-  if (capability === undefined) return `sem capacidade declarada para ${input.intent ?? 'intencao desconhecida'}`
-  if (capability < scoring.min_capability) return `capacidade ${capability} abaixo do minimo ${scoring.min_capability}`
-  if (cost === null) return 'sem preco na tabela'
+  if (capability === undefined) return `sem capacidade declarada para ${input.intent ?? 'intenção desconhecida'}`
+  if (capability < scoring.min_capability) return `capacidade ${capability} abaixo do mínimo ${scoring.min_capability}`
+  if (cost === null) return 'sem preço na tabela'
   const contexto = contextOf(input)
   if (c.maxPromptTokens !== undefined && contexto > c.maxPromptTokens) return `contexto de ${contexto} tokens acima do limite ${c.maxPromptTokens}`
   if (c.contextWindow < contexto * scoring.context_margin + c.maxOutput) return `janela de ${c.contextWindow} tokens insuficiente para ${contexto} de contexto`

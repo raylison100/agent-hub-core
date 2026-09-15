@@ -41,6 +41,18 @@ export interface ScheduleSpec {
   enabled: boolean
 }
 
+export interface RoleDetail {
+  name: string
+  description: string
+  models: string[]
+  tools: { native: string[]; mcp: string[] }
+  skills: string[]
+  policy: string | null
+  max_steps: number | null
+  budget: { run_usd?: number; session_usd?: number }
+  prompt: string
+}
+
 export type CanalId = 'telegram' | 'slack' | 'discord' | 'whatsapp'
 
 export type AutomationChannel = string
@@ -224,6 +236,9 @@ export type ClientFrame =
   | { type: 'secrets.list' }
   | { type: 'secrets.set'; name: string; value: string }
   | { type: 'secrets.delete'; name: string }
+  | { type: 'role.get'; name: string }
+  | { type: 'role.save'; role: RoleDetail; original?: string }
+  | { type: 'role.delete'; name: string }
   | { type: 'canais.estado' }
   | { type: 'canal.criar'; tipo: CanalId; nome: string }
   | { type: 'canal.salvar'; canal: string; valores: Record<string, string> }
@@ -358,6 +373,9 @@ export type ServerFrame =
   | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded' | 'escalated'; cost_usd: number; outputs: Record<string, unknown>; error?: string; resumable?: boolean }
   | { type: 'secrets.list'; secrets: { name: string; hint: string; length: number; updated_at: number; source: 'db' | 'env' }[] }
   | { type: 'canais.estado'; tipos: TipoDeCanalResumo[]; canais: EstadoDoCanal[]; aviso?: string; criado?: string }
+  | { type: 'role.detail'; role: RoleDetail; policies: string[]; native_tools: string[] }
+  | { type: 'role.saved'; name: string }
+  | { type: 'role.deleted'; name: string }
   | { type: 'fs.list'; path: string; entries: { name: string; dir: boolean }[] }
   | { type: 'fs.read'; path: string; text: string; truncated: boolean }
   | { type: 'fs.tree'; path: string; text: string }
