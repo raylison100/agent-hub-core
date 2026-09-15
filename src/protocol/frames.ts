@@ -41,7 +41,31 @@ export interface ScheduleSpec {
   enabled: boolean
 }
 
-export type AutomationChannel = 'telegram'
+export type CanalId = 'telegram' | 'slack' | 'discord' | 'whatsapp'
+
+export type AutomationChannel = CanalId
+
+export interface PessoaDoCanal {
+  id: string
+  nome?: string
+  usuario?: string
+  conversa?: string
+}
+
+export interface EstadoDoCanal {
+  id: CanalId
+  nome: string
+  descricao: string
+  passos: string[]
+  campos: { chave: string; rotulo: string; segredo: boolean; obrigatorio: boolean; ajuda?: string; exemplo?: string; preenchido: boolean; dica: string }[]
+  configurado: boolean
+  conta: string | null
+  ligado: boolean
+  rodando: boolean
+  erro: string | null
+  permitidos: PessoaDoCanal[]
+  pedidos: (PessoaDoCanal & { em: number })[]
+}
 
 export interface ScheduleStatus extends ScheduleSpec {
   source: 'file' | 'db'
@@ -187,6 +211,13 @@ export type ClientFrame =
   | { type: 'secrets.list' }
   | { type: 'secrets.set'; name: string; value: string }
   | { type: 'secrets.delete'; name: string }
+  | { type: 'canais.estado' }
+  | { type: 'canal.salvar'; canal: CanalId; valores: Record<string, string> }
+  | { type: 'canal.ligar'; canal: CanalId; ligado: boolean }
+  | { type: 'canal.permitir'; canal: CanalId; pessoa: string }
+  | { type: 'canal.remover_pessoa'; canal: CanalId; pessoa: string }
+  | { type: 'canal.testar'; canal: CanalId }
+  | { type: 'canal.apagar'; canal: CanalId }
   | { type: 'fs.list'; session_id?: string; workspace?: string; path?: string }
   | { type: 'fs.read'; session_id?: string; workspace?: string; path: string; max_chars?: number }
   | { type: 'fs.tree'; session_id?: string; workspace?: string; path?: string; depth?: number }
@@ -310,6 +341,7 @@ export type ServerFrame =
   | { type: 'workflow.step'; session_id: string; run_id: string; step: string; status: 'running' | 'done' | 'error' | 'retry' | 'escalated'; ms?: number; cost_usd?: number; detail?: string }
   | { type: 'workflow.finished'; name: string; session_id: string; run_id: string; status: 'done' | 'error' | 'budget_exceeded' | 'escalated'; cost_usd: number; outputs: Record<string, unknown>; error?: string; resumable?: boolean }
   | { type: 'secrets.list'; secrets: { name: string; hint: string; length: number; updated_at: number; source: 'db' | 'env' }[] }
+  | { type: 'canais.estado'; canais: EstadoDoCanal[]; aviso?: string }
   | { type: 'fs.list'; path: string; entries: { name: string; dir: boolean }[] }
   | { type: 'fs.read'; path: string; text: string; truncated: boolean }
   | { type: 'fs.tree'; path: string; text: string }

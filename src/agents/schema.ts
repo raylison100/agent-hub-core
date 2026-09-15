@@ -179,7 +179,7 @@ export const ScheduleSchema = z
     budget: z.object({ run_usd: z.number().nonnegative(), day_usd: z.number().nonnegative() }),
     overlap: z.enum(['queue', 'skip']).default('skip'),
     missed: z.enum(['skip', 'run_once']).default('skip'),
-    notify: z.array(z.enum(['telegram'])).default([]),
+    notify: z.array(z.enum(['telegram', 'slack', 'discord', 'whatsapp'])).default([]),
     enabled: z.boolean().default(true),
   })
   .refine((s) => Boolean(s.cron) !== Boolean(s.at), { message: 'informe cron ou at, nunca ambos' })
