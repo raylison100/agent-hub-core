@@ -1,5 +1,8 @@
 import OpenAI from 'openai'
 import { outputCap } from './cap.js'
+import { idleWatchdog, ProviderStalledError } from './watchdog.js'
+
+const defaultIdleTimeoutMs = 180_000
 import type {
   Capabilities,
   ChatEvents,
@@ -36,6 +39,7 @@ export interface OpenAICompatibleOptions {
   temperature?: number
   seed?: number
   extraBody?: Record<string, unknown>
+  idleTimeoutMs?: number
 }
 
 interface ReasoningRaw {
@@ -95,29 +99,52 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
     }
   }
 
+  /** Chama o modelo; se o provedor fica mudo antes de mandar texto, cancela e tenta de novo uma vez. */
   async chat(req: ChatRequest, on: ChatEvents = {}): Promise<ChatResult> {
+    const emitted = { value: false }
+    try {
+      return await this.chatOnce(req, on, emitted)
+    } catch (err) {
+      if (!(err instanceof ProviderStalledError) || emitted.value || req.signal?.aborted) throw err
+      return this.chatOnce(req, on, emitted)
+    }
+  }
+
+  private async chatOnce(req: ChatRequest, on: ChatEvents, emitted: { value: boolean }): Promise<ChatResult> {
     const started = Date.now()
-    const stream = await this.client.chat.completions.create(this.buildParams(req), { signal: req.signal })
+    const idleMs = this.opts.idleTimeoutMs ?? defaultIdleTimeoutMs
+    const watchdog = idleWatchdog(idleMs, req.signal)
     const text: string[] = []
     const reasoning: string[] = []
     const calls = new Map<number, ToolCallAccumulator>()
     let finish: string | null = null
     let usage: UsageWithCacheFields | null = null
-    for await (const chunk of stream) {
-      if (chunk.usage) usage = chunk.usage as UsageWithCacheFields
-      const choice = chunk.choices[0]
-      if (!choice) continue
-      const delta = choice.delta as typeof choice.delta & { reasoning_content?: string }
-      if (delta.content) {
-        text.push(delta.content)
-        on.onText?.(delta.content)
+    try {
+      const stream = await this.client.chat.completions.create(this.buildParams(req), { signal: watchdog.signal })
+      for await (const chunk of stream) {
+        watchdog.touch()
+        if (chunk.usage) usage = chunk.usage as UsageWithCacheFields
+        const choice = chunk.choices[0]
+        if (!choice) continue
+        const delta = choice.delta as typeof choice.delta & { reasoning_content?: string }
+        if (delta.content) {
+          emitted.value = true
+          text.push(delta.content)
+          on.onText?.(delta.content)
+        }
+        if (delta.reasoning_content) {
+          emitted.value = true
+          reasoning.push(delta.reasoning_content)
+          on.onReasoning?.(delta.reasoning_content)
+        }
+        for (const tc of delta.tool_calls ?? []) accumulateToolCall(calls, tc)
+        if (choice.finish_reason) finish = choice.finish_reason
       }
-      if (delta.reasoning_content) {
-        reasoning.push(delta.reasoning_content)
-        on.onReasoning?.(delta.reasoning_content)
-      }
-      for (const tc of delta.tool_calls ?? []) accumulateToolCall(calls, tc)
-      if (choice.finish_reason) finish = choice.finish_reason
+    } catch (err) {
+      if (watchdog.stalled()) throw new ProviderStalledError(this.provider, idleMs)
+      throw err
+    } finally {
+      watchdog.dispose()
     }
     const split = splitThink(text.join(''))
     const message = buildAssistant(split.text, calls, reasoning.join('') + split.think)
