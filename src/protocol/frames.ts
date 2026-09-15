@@ -206,7 +206,8 @@ export type ClientFrame =
   | { type: 'cost.report'; group: 'agent' | 'model' | 'session' | 'day'; since?: number }
   | { type: 'sync'; session_id: string; since_seq: number }
   | { type: 'schedule.list' }
-  | { type: 'schedule.upsert'; schedule: ScheduleSpec }
+  | { type: 'schedule.upsert'; schedule: ScheduleSpec; original?: string }
+  | { type: 'schedule.preview'; cron?: string; at?: number; timezone: string }
   | { type: 'schedule.delete'; id: string }
   | { type: 'schedule.run_now'; id: string }
   | { type: 'automation.pause' }
@@ -339,6 +340,7 @@ export type ServerFrame =
   | { type: 'sync'; session_id: string; events: { seq: number; run_id: string; event: RunEvent }[]; active_run_ids?: string[] }
   | { type: 'schedule.list'; schedules: ScheduleStatus[]; paused: boolean }
   | { type: 'schedule.saved'; schedule: ScheduleStatus }
+  | { type: 'schedule.preview'; next: number[]; erro?: string }
   | { type: 'schedule.deleted'; id: string }
   | { type: 'automation.state'; paused: boolean }
   | { type: 'automation.started'; kind: 'schedule' | 'trigger'; id: string; session_id: string; run_id: string }
